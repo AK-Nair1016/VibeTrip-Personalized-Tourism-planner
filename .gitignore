@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.local
+
+frontend/dist/
+frontend/.vite/
+
+shared-types/dist/
+backend/dist/

@@ -1,0 +1,9 @@
+{
+  "name": "vibetrip",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared-types"
+  ]
+}
