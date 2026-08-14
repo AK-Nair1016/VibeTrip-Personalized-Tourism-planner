@@ -1,6 +1,7 @@
-node_modules/
-dist/
+#dependencies for node and express
+node_modules
 .env
+dist/
 *.local
 
 frontend/dist/
