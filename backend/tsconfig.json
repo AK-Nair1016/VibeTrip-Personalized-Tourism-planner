@@ -8,8 +8,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true,
-    "types": ["node", "express", "cors", "passport", "passport-google-oauth20"]
+    "resolveJsonModule": true
   },
   "include": ["src"]
 }

@@ -1,0 +1,54 @@
+import dotenv from "dotenv";
+import type { SignOptions } from "jsonwebtoken";
+
+dotenv.config();
+
+type JwtExpiresIn = SignOptions["expiresIn"];
+
+const getEnv = (key: string, fallback?: string): string => {
+  const value = process.env[key]?.trim() || fallback;
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+
+  return value;
+};
+const getJwtExpiresIn = (
+  key: string,
+  fallback: JwtExpiresIn
+): JwtExpiresIn => {
+  return getEnv(key, String(fallback)) as JwtExpiresIn;
+};
+
+export const env = {
+  // JWT
+  JWT_ACCESS_SECRET: getEnv(
+    "JWT_ACCESS_SECRET",
+    "dev-access-secret"
+  ),
+
+  JWT_ACCESS_EXPIRES: getJwtExpiresIn(
+    "JWT_ACCESS_EXPIRES",
+    "15m"
+  ),
+
+  JWT_REFRESH_SECRET: getEnv(
+    "JWT_REFRESH_SECRET",
+    "dev-refresh-secret"
+  ),
+
+  JWT_REFRESH_EXPIRES: getJwtExpiresIn(
+    "JWT_REFRESH_EXPIRES",
+    "7d"
+  ),
+
+  // Google OAuth
+  GOOGLE_CLIENT_ID: getEnv("GOOGLE_CLIENT_ID"),
+  GOOGLE_CLIENT_SECRET: getEnv("GOOGLE_CLIENT_SECRET"),
+
+  GOOGLE_CALLBACK_URL: getEnv(
+    "GOOGLE_CALLBACK_URL",
+    "http://localhost:5000/api/auth/google/callback"
+  )
+};
