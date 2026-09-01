@@ -62,7 +62,7 @@ const userSchema = new mongoose.Schema(
 
     passwordHash: {
       type: String,
-      required: true,
+      required: false,
       select: false,
     },
 
@@ -86,6 +86,30 @@ const userSchema = new mongoose.Schema(
     isEmailVerified: {
       type: Boolean,
       default: false,
+    },
+
+    emailVerificationToken: {
+      type: String,
+      select: false,
+      default: null,
+    },
+
+    emailVerificationExpires: {
+      type: Date,
+      select: false,
+      default: null,
+    },
+
+    passwordResetToken: {
+      type: String,
+      select: false,
+      default:null,
+    },
+
+    passwordResetExpires: {
+      type: Date,
+      select: false,
+      default:null,
     },
 
     savedTravelers: {
