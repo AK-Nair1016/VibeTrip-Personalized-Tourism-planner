@@ -1,4 +1,3 @@
-// Stripe calls (docs/ARCHITECTURE.md, section 3). Provider failures become 502 PROVIDER_ERROR.
 import type { CurrencyCode } from "@vibetrip/shared-types";
 import Stripe from "stripe";
 import { env } from "../config/env";
@@ -8,7 +7,7 @@ import { toMinorUnits } from "./fxService";
 const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 
 interface PaymentIntentData {
-  amount: number; // normal units, e.g. 7420.92
+  amount: number;
   currency: CurrencyCode;
   bookingId: string;
   userId: string;
@@ -25,7 +24,6 @@ export const createFlightPaymentIntent = async (data: PaymentIntentData) => {
         currency: currency.toLowerCase(),
         // Hold the money now, take it only after Duffel confirms the flight
         capture_method: "manual",
-        // The webhook finds our booking through these
         metadata: { bookingId, userId },
         automatic_payment_methods: { enabled: true },
       },
@@ -33,7 +31,6 @@ export const createFlightPaymentIntent = async (data: PaymentIntentData) => {
       { idempotencyKey: `booking-${bookingId}` }
     );
   } catch (error) {
-    // The real reason stays in our logs; the traveller gets a generic message
     const reason = error instanceof Error ? error.message : "unknown error";
     console.error(`Stripe error creating PaymentIntent: ${reason}`);
     throw new AppError("PROVIDER_ERROR", "The payment provider could not start the payment", 502);

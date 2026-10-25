@@ -1,6 +1,3 @@
-// Booking checkout (see docs/ARCHITECTURE.md, section 3). F5 covers only the
-// first half: price the offer, lock the rate, save a draft, create the Stripe hold.
-// The webhook (F6) does the Duffel order and the capture.
 import type { CurrencyCode, FlightSlice, Money } from "@vibetrip/shared-types";
 import { AppError } from "../utils/AppError";
 import { getOfferForCheckout, type DuffelOrderPassenger } from "./duffelFlightService";
@@ -10,13 +7,13 @@ import { createFlightPaymentIntent } from "./stripeService";
 // One traveller, as the client sends them. Duffel's pas_ ids are NOT here:
 // the server pairs travellers to ids by position (decision made 24 Oct).
 export interface PassengerInput {
-  title: string; // mr, ms, mrs, miss, dr
+  title: string;
   givenName: string;
   familyName: string;
-  bornOn: string; // YYYY-MM-DD
-  gender: string; // m or f
+  bornOn: string;
+  gender: string;
   email: string;
-  phoneNumber: string; // +919999999999
+  phoneNumber: string;
 }
 
 export interface CreateFlightBookingData {
@@ -26,25 +23,23 @@ export interface CreateFlightBookingData {
   passengers: PassengerInput[];
 }
 
-// What we save on the Booking at checkout. F6 reads it back to create the Duffel
-// order, then replaces it with the confirmed details.
 export interface FlightDraftSnapshot {
   offerId: string;
   airline: string;
   slices: FlightSlice[];
-  price: Money; // what the traveller was shown, in their currency
+  price: Money;
   expiresAt: string;
-  passengers: DuffelOrderPassenger[]; // each one already holds its pas_ id
+  passengers: DuffelOrderPassenger[];
 }
 
 export const createFlightBooking = async (data: CreateFlightBookingData) => {
   const { userId, offerId, currency, passengers } = data;
 
-  // 1. Re-fetch and price the offer. This throws 409 FARE_EXPIRED if the fare is gone.
-  //    The price comes from here, never from the client.
+  // Re-fetch and price the offer. This throws 409 FARE_EXPIRED if the fare is gone.
+  // The price comes from here, never from the client.
   const { offer, conversion } = await getOfferForCheckout(offerId, currency);
 
-  // 2. The offer fixes how many travellers it covers, and we pair them by position
+  // The offer fixes how many travellers it covers, and we pair them by position
   if (passengers.length !== offer.passengers.length) {
     throw new AppError(
       "PASSENGER_MISMATCH",
@@ -53,8 +48,7 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
     );
   }
 
-  // 3. Build the draft snapshot: pair each traveller with the pas_ id at the same position.
-  //    Fields are copied one by one (no spread), so anything extra the client sent is not saved.
+  // Fields are copied one by one (no spread), so anything extra the client sent is not saved.
   const snapshotPassengers: DuffelOrderPassenger[] = [];
   for (let i = 0; i < passengers.length; i++) {
     const passenger = passengers[i];
@@ -79,8 +73,8 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
     passengers: snapshotPassengers,
   };
 
-  // 4. Save the booking first: Stripe needs its id, and the F6 webhook finds it again
-  //    through that id. The rate is locked here, so refunds can use the same rate later.
+  // Save the booking first: Stripe needs its id, and the webhook finds it again
+  // through that id. The rate is locked here, so refunds can use the same rate later.
   const booking = await Booking.create({
     userId,
     type: "flight",
@@ -98,7 +92,6 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
   const bookingId = booking._id.toString();
 
   try {
-    // 5. Hold the money on the card (not taken yet: the webhook captures it after Duffel confirms)
     const payment = await createFlightPaymentIntent({
       amount: conversion.amount,
       currency: conversion.currency,
@@ -106,11 +99,9 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
       userId,
     });
 
-    // 6. Remember which PaymentIntent belongs to this booking
     booking.stripePaymentIntentId = payment.paymentIntentId;
     await booking.save();
 
-    // 7. The client needs the secret to confirm the card with Stripe Elements
     return {
       bookingId,
       clientSecret: payment.clientSecret,

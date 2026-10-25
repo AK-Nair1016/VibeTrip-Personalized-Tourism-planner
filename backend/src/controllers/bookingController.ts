@@ -21,7 +21,6 @@ export function getBookings(_req: Request, res: Response) {
   res.json([sampleBooking]);
 }
 
-// POST /api/bookings/flights  (logged-in users)
 export const createFlightBooking = catchAsync(
   async (req: Request, res: Response) => {
     const userId = req.authUser?.userId;

@@ -4,7 +4,6 @@ import { isCityCode } from "../config/cities";
 const MAX_ADULTS = 9; // Duffel allows at most 9 passengers per search
 const MAX_CONNECTIONS = 2;
 
-// True for a real calendar date written as YYYY-MM-DD, e.g. "2026-11-20".
 export const isDateString = (value: unknown): boolean => {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -19,7 +18,6 @@ export const isDateString = (value: unknown): boolean => {
   return date.toISOString().slice(0, 10) === value;
 };
 
-// GET /api/flights/search?origin=DEL&destination=BOM&departureDate=2026-11-20&adults=1
 // Every query value arrives as a string (or is missing).
 export const validateFlightSearch = (query: any): string | null => {
   const {
@@ -33,7 +31,6 @@ export const validateFlightSearch = (query: any): string | null => {
     currency,
   } = query;
 
-  // 1. Required fields must be present
   if (!origin) {
     return "Origin is required";
   }
@@ -50,7 +47,6 @@ export const validateFlightSearch = (query: any): string | null => {
     return "Number of adults is required";
   }
 
-  // 2. Cities must be one of our 10, and the trip must go somewhere
   if (!isCityCode(origin)) {
     return "Origin is not a supported city code";
   }
@@ -63,7 +59,7 @@ export const validateFlightSearch = (query: any): string | null => {
     return "Origin and destination must be different";
   }
 
-  // 3. Dates. YYYY-MM-DD strings compare correctly as plain text.
+  // YYYY-MM-DD strings compare correctly as plain text.
   const today = new Date().toISOString().slice(0, 10);
 
   if (!isDateString(departureDate)) {
@@ -84,7 +80,7 @@ export const validateFlightSearch = (query: any): string | null => {
     }
   }
 
-  // 4. Numbers arrive as strings, so convert before checking
+  // Numbers arrive as strings, so convert before checking
   const adultCount = Number(adults);
 
   if (!Number.isInteger(adultCount) || adultCount < 1 || adultCount > MAX_ADULTS) {
@@ -99,7 +95,6 @@ export const validateFlightSearch = (query: any): string | null => {
     }
   }
 
-  // 5. Optional values that must come from a fixed list
   if (cabinClass && !(CABIN_CLASSES as readonly string[]).includes(cabinClass)) {
     return `Cabin class must be one of: ${CABIN_CLASSES.join(", ")}`;
   }
@@ -111,7 +106,6 @@ export const validateFlightSearch = (query: any): string | null => {
   return null;
 };
 
-// GET /api/flights/:offerId  (checks req.params)
 // Duffel offer ids look like "off_0000AbCd..." (letters, digits, underscores).
 export const validateOfferId = (params: any): string | null => {
   const { offerId } = params;
@@ -127,7 +121,6 @@ export const validateOfferId = (params: any): string | null => {
   return null;
 };
 
-// GET /api/flights/:offerId?currency=INR  (checks req.query)
 export const validateOfferQuery = (query: any): string | null => {
   const { currency } = query;
 

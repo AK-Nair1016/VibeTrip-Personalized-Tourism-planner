@@ -10,7 +10,6 @@ import { validateRequest } from "../middleware/validateRequest";
 
 const router = Router();
 
-// Public: anyone can search. Validates req.query, not req.body.
 router.get("/search", validateRequest(validateFlightSearch, "query"), searchFlights);
 
 // Logged-in users only. This must stay BELOW "/search": Express checks routes

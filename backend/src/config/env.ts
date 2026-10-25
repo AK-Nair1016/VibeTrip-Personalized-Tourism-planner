@@ -22,7 +22,6 @@ const getJwtExpiresIn = (
 };
 
 export const env = {
-  // JWT
   JWT_ACCESS_SECRET: getEnv(
     "JWT_ACCESS_SECRET",
     "dev-access-secret"
@@ -43,7 +42,6 @@ export const env = {
     "7d"
   ),
 
-  // Google OAuth
   GOOGLE_CLIENT_ID: getEnv("GOOGLE_CLIENT_ID"),
   GOOGLE_CLIENT_SECRET: getEnv("GOOGLE_CLIENT_SECRET"),
 
@@ -52,12 +50,9 @@ export const env = {
     "http://localhost:5000/api/auth/google/callback"
   ),
 
-  // Duffel (test mode key starts with duffel_test_)
   DUFFEL_API_KEY: getEnv("DUFFEL_API_KEY"),
 
-  // Stripe (test mode key starts with sk_test_)
   STRIPE_SECRET_KEY: getEnv("STRIPE_SECRET_KEY"),
-  // Signing secret for the webhook (starts with whsec_); used to verify that Stripe sent the event
   STRIPE_WEBHOOK_SECRET: getEnv("STRIPE_WEBHOOK_SECRET"),
 
   // Currency conversion: margin added on top of the exchange rate, in percent

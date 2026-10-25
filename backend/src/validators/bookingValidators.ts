@@ -2,14 +2,11 @@ import { SUPPORTED_CURRENCIES } from "@vibetrip/shared-types";
 import type { PassengerInput } from "../services/bookingService";
 import { isDateString } from "./flightValidators";
 
-// Values Duffel accepts for a traveller
 const TITLES = ["mr", "ms", "mrs", "miss", "dr"];
 const GENDERS = ["m", "f"];
 const MAX_PASSENGERS = 9; // same cap as the search
 const MAX_NAME_LENGTH = 50;
 
-// What we expect, but every field may be missing or the wrong type,
-// which is exactly what this validator checks.
 type FlightBookingBody = {
   offerId?: unknown;
   currency?: unknown;
@@ -18,7 +15,6 @@ type FlightBookingBody = {
 
 type PassengerBody = Partial<Record<keyof PassengerInput, unknown>>;
 
-// Used for both the given name and the family name.
 const isName = (value: unknown): boolean => {
   if (typeof value !== "string") {
     return false;
@@ -27,8 +23,6 @@ const isName = (value: unknown): boolean => {
   return length >= 1 && length <= MAX_NAME_LENGTH;
 };
 
-// POST /api/bookings/flights
-// Body: { offerId, currency, passengers: [{ title, givenName, familyName, bornOn, gender, email, phoneNumber }] }
 // We do NOT check here that passengers.length matches the offer. That needs
 // the offer from Duffel, so the service does it.
 export const validateFlightBooking = (body: unknown): string | null => {

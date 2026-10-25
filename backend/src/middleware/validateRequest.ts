@@ -2,8 +2,6 @@ import { Request, Response, NextFunction } from "express";
 
 type Validator = (input: unknown) => string | null;
 
-// "body" for POST/PUT payloads, "query" for GET search params (?origin=DEL&...),
-// "params" for ids inside the path (/flights/:offerId)
 type RequestSource = "body" | "query" | "params";
 
 export const validateRequest =

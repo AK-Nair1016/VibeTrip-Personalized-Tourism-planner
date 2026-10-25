@@ -8,12 +8,10 @@ import {
 } from "../services/duffelFlightService";
 import { catchAsync } from "../utils/catchAsync";
 
-// Used when the frontend sends no currency (it normally always does).
 const DEFAULT_CURRENCY: CurrencyCode = "INR";
 const DEFAULT_CABIN_CLASS: CabinClass = "economy";
 const DEFAULT_MAX_CONNECTIONS = 1;
 
-// Every value in a URL query is text, and optional ones may be missing.
 type SearchQuery = {
   origin: string;
   destination: string;
@@ -25,8 +23,6 @@ type SearchQuery = {
   currency?: string;
 };
 
-// The validator already checked the query, so here we only change text into
-// numbers and fill in defaults for the optional values.
 const toSearchParams = (query: SearchQuery): FlightSearchParams => {
   let cabinClass: CabinClass = DEFAULT_CABIN_CLASS;
   if (query.cabinClass) {
@@ -54,7 +50,6 @@ const toSearchParams = (query: SearchQuery): FlightSearchParams => {
     currency,
   };
 
-  // No return date means a one-way trip
   if (query.returnDate) {
     params.returnDate = query.returnDate;
   }
@@ -62,7 +57,6 @@ const toSearchParams = (query: SearchQuery): FlightSearchParams => {
   return params;
 };
 
-// GET /api/flights/search
 export const searchFlights = catchAsync(async (req: Request, res: Response) => {
   const params = toSearchParams(req.query as unknown as SearchQuery);
 
@@ -75,9 +69,7 @@ export const searchFlights = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-// GET /api/flights/:offerId  (logged-in users)
 export const getFlightOffer = catchAsync(async (req: Request, res: Response) => {
-  // The validators already checked both values
   const offerId = req.params.offerId as string;
 
   let currency: CurrencyCode = DEFAULT_CURRENCY;

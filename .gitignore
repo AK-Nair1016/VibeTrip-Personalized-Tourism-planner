@@ -16,3 +16,6 @@ settings.json
 docs/
 CLAUDE.md
 frontend/CLAUDE.md
+
+# One-off Duffel and FX check scripts, kept on disk for local use only
+backend/src/scripts/

@@ -138,12 +138,6 @@ export const googleLogin = catchAsync(
 export const logout = catchAsync(
   async (req: Request, res: Response) => {
     res.clearCookie("refreshToken");
-    //TODO: check which block is suitable for my approach of cookie
-    // res.clearCookie("refreshToken", {
-    //   httpOnly: true,
-    //   secure: process.env.NODE_ENV === "production",
-    //   sameSite: "strict",
-    // });
 
     res.status(200).json({
       success: true,
@@ -152,7 +146,6 @@ export const logout = catchAsync(
   }
 );
 
-//forgot password
 export const forgotPassword =catchAsync(
   async(req: Request, res:Response)=>{
     const{email}=req.body;

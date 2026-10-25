@@ -4,7 +4,6 @@ import { handleWebhookEvent as handleWebhookEventService } from "../services/pay
 import { AppError } from "../utils/AppError";
 import { catchAsync } from "../utils/catchAsync";
 
-// POST /api/payments/webhook  (called by Stripe, not by a logged-in user)
 export const stripeWebhook = catchAsync(
   async (req: Request, res: Response) => {
     const signature = req.header("stripe-signature");
@@ -16,7 +15,6 @@ export const stripeWebhook = catchAsync(
     const event = constructWebhookEvent(req.body as Buffer, signature);
     await handleWebhookEventService(event);
 
-    // A quick 2xx tells Stripe we got it, so it stops retrying
     res.status(200).json({ received: true });
   }
 );

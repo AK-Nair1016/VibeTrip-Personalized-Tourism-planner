@@ -1,4 +1,3 @@
-// What to do when Stripe tells us the card hold succeeded (docs/ARCHITECTURE.md, section 3)
 import type Stripe from "stripe";
 import { Booking } from "../models/Booking";
 import type { FlightDraftSnapshot } from "./bookingService";
@@ -31,7 +30,6 @@ export const handlePaymentAuthorized = async (paymentIntentId: string) => {
       passengers: snapshot.passengers,
     });
   } catch (error) {
-    // No flight was booked, so release the card hold and mark the booking failed
     console.error(`Duffel order failed for booking ${booking.id}`, error);
     try {
       await cancelPaymentIntent(paymentIntentId);
@@ -69,11 +67,9 @@ export const handlePaymentAuthorized = async (paymentIntentId: string) => {
   await booking.save();
 };
 
-// The controller calls this only after the signature check passed
 export const handleWebhookEvent = async (event: Stripe.Event) => {
   switch (event.type) {
     case "payment_intent.amount_capturable_updated": {
-      // The card hold succeeded, so it is time to book the flight
       const paymentIntent = event.data.object;
       await handlePaymentAuthorized(paymentIntent.id);
       return;
