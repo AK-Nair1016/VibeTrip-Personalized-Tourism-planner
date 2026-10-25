@@ -1,25 +1,45 @@
 import type { Request, Response } from "express";
-import type { Booking } from "@vibetrip/shared-types";
-import { createFlightBooking as createFlightBookingService } from "../services/bookingService";
+import {
+  createFlightBooking as createFlightBookingService,
+  getUserBookings as getUserBookingsService,
+  getBookingById as getBookingByIdService,
+} from "../services/bookingService";
 import { catchAsync } from "../utils/catchAsync";
 
-const sampleBooking: Booking = {
-  id: "booking_demo",
-  user: {
-    id: "user_demo",
-    name: "Demo Traveler",
-    email: "demo@vibetrip.local",
-    createdAt: new Date().toISOString()
-  },
-  status: "pending",
-  totalAmount: 0,
-  currency: "USD",
-  createdAt: new Date().toISOString()
-};
+export const getBookings = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
 
-export function getBookings(_req: Request, res: Response) {
-  res.json([sampleBooking]);
-}
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const bookings = await getUserBookingsService({ userId });
+
+  res.status(200).json({
+    success: true,
+    message: "Bookings fetched",
+    data: bookings,
+  });
+});
+
+export const getBookingById = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  // Express 5 types a param as string | string[]. The validator already proved it is a string.
+  const id = req.params.id as string;
+
+  const booking = await getBookingByIdService({ userId, bookingId: id });
+
+  res.status(200).json({
+    success: true,
+    message: "Booking fetched",
+    data: booking,
+  });
+});
 
 export const createFlightBooking = catchAsync(
   async (req: Request, res: Response) => {

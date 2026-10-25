@@ -371,3 +371,34 @@ export const createDuffelOrder = async (data: DuffelOrderData): Promise<DuffelOr
 
   return { providerBookingId: result.data.id, bookingReference: result.data.booking_reference };
 };
+
+// What the booking detail page shows from Duffel. Our own shape: raw Duffel JSON never leaves this file.
+// Only the fields that can change after booking. Route, times and price are already in our snapshot.
+export interface FlightLiveStatus {
+  availableActions: string[]; // for example "cancel", "change", "update"
+  cancelledAt: string | null;
+  hasAirlineChanges: boolean; // the airline changed the schedule after we booked
+  syncedAt: string; // when Duffel last checked with the airline
+}
+
+type DuffelOrderStatusResponse = {
+  data: {
+    available_actions: string[];
+    cancelled_at: string | null;
+    airline_initiated_changes: unknown[];
+    synced_at: string;
+  };
+};
+
+// GET /air/orders/:orderId. Throws PROVIDER_ERROR if Duffel is down; the caller decides what to do.
+export const getDuffelOrderStatus = async (orderId: string): Promise<FlightLiveStatus> => {
+  const result = await duffelRequest<DuffelOrderStatusResponse>(`/air/orders/${orderId}`);
+  const order = result.data;
+
+  return {
+    availableActions: order.available_actions,
+    cancelledAt: order.cancelled_at,
+    hasAirlineChanges: order.airline_initiated_changes.length > 0,
+    syncedAt: order.synced_at,
+  };
+};

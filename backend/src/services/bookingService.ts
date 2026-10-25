@@ -1,6 +1,11 @@
 import type { CurrencyCode, FlightSlice, Money } from "@vibetrip/shared-types";
 import { AppError } from "../utils/AppError";
-import { getOfferForCheckout, type DuffelOrderPassenger } from "./duffelFlightService";
+import {
+  getOfferForCheckout,
+  getDuffelOrderStatus,
+  type DuffelOrderPassenger,
+  type FlightLiveStatus,
+} from "./duffelFlightService";
 import { Booking } from "../models/Booking";
 import { createFlightPaymentIntent } from "./stripeService";
 
@@ -119,4 +124,56 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
     }
     throw error;
   }
+};
+
+export interface GetUserBookingsData {
+  userId: string;
+}
+
+export interface GetBookingData {
+  userId: string;
+  bookingId: string;
+}
+
+// Decided 25 Oct: the list hides "failed" and "pending_payment" (abandoned checkouts are noise),
+// and it is not paginated.
+export const getUserBookings = async (data: GetUserBookingsData) => {
+  const { userId } = data;
+
+  // Newest first. The { userId: 1, createdAt: -1 } index serves this query.
+  // lean() returns plain objects, which is enough for a read-only list.
+  const bookings = await Booking.find({
+    userId,
+    status: { $in: ["authorized", "confirmed", "cancelled"] },
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return bookings;
+};
+
+export const getBookingById = async (data: GetBookingData) => {
+  const { userId, bookingId } = data;
+
+  // Query by BOTH ids: another user's booking then looks the same as a missing one,
+  // so booking ids cannot be guessed.
+  const booking = await Booking.findOne({ _id: bookingId, userId }).lean();
+
+  if (!booking) {
+    throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
+  }
+
+  // Only a confirmed flight has a Duffel order to ask about.
+  let liveStatus: FlightLiveStatus | null = null;
+
+  if (booking.type === "flight" && booking.status === "confirmed" && booking.providerBookingId) {
+    try {
+      liveStatus = await getDuffelOrderStatus(booking.providerBookingId);
+    } catch (error) {
+      // Decided 25 Oct: if Duffel is down the user still gets their booking, without live status.
+      console.error(`Could not fetch live status for booking ${bookingId}`, error);
+    }
+  }
+
+  return { ...booking, liveStatus };
 };

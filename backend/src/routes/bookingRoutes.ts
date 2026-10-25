@@ -1,12 +1,23 @@
 import { Router } from "express";
-import { getBookings, createFlightBooking } from "../controllers/bookingController";
-import { validateFlightBooking } from "../validators/bookingValidators";
+import {
+  getBookings,
+  getBookingById,
+  createFlightBooking,
+} from "../controllers/bookingController";
+import { validateFlightBooking, validateBookingId } from "../validators/bookingValidators";
 import { authGuard } from "../middleware/authGuard";
 import { validateRequest } from "../middleware/validateRequest";
 
 const router = Router();
 
-router.get("/", getBookings);
+router.get("/", authGuard, getBookings);
+
+router.get(
+  "/:id",
+  authGuard,
+  validateRequest(validateBookingId, "params"),
+  getBookingById
+);
 
 router.post(
   "/flights",

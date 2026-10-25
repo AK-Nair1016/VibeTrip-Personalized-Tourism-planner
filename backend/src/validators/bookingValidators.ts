@@ -113,3 +113,25 @@ export const validateFlightBooking = (body: unknown): string | null => {
 
   return null;
 };
+
+// Used on GET /bookings/:id with source "params"
+export const validateBookingId = (params: unknown): string | null => {
+  // Express 5 can leave params undefined, so guard before destructuring
+  if (!params || typeof params !== "object") {
+    return "Booking id is required";
+  }
+
+  const { id } = params as { id?: unknown };
+
+  if (!id) {
+    return "Booking id is required";
+  }
+
+  // A malformed id would make Mongoose throw a CastError (a 500), so reject it here as a 422.
+  // A Mongo ObjectId is exactly 24 hex characters.
+  if (typeof id !== "string" || !/^[0-9a-fA-F]{24}$/.test(id)) {
+    return "Booking id is not valid";
+  }
+
+  return null;
+};
