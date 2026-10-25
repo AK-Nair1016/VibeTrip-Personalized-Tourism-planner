@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "nodemon --exec ts-node --files src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "duffel:test": "tsx src/scripts/testDuffel.ts",
+    "duffel:spike": "tsx src/scripts/duffelSpike.ts",
+    "fx:test": "tsx src/scripts/testFx.ts"
   },
   "dependencies": {
     "@vibetrip/shared-types": "*",
