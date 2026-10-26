@@ -9,3 +9,13 @@ frontend/.vite/
 
 shared-types/dist/
 backend/dist/
+settings.json
+.claude/settings.local.json
+
+# Working docs and AI guides stay local; a recruiter-facing report comes later
+docs/
+CLAUDE.md
+frontend/CLAUDE.md
+
+# One-off Duffel and FX check scripts, kept on disk for local use only
+backend/src/scripts/

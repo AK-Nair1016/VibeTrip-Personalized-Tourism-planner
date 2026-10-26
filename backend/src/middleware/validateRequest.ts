@@ -1,11 +1,13 @@
 import { Request, Response, NextFunction } from "express";
 
-type Validator = (body: unknown) => string | null;
+type Validator = (input: unknown) => string | null;
+
+type RequestSource = "body" | "query" | "params";
 
 export const validateRequest =
-  (validator: Validator) =>
+  (validator: Validator, source: RequestSource = "body") =>
   (req: Request, res: Response, next: NextFunction) => {
-    const error = validator(req.body);
+    const error = validator(req[source]);
 
     if (error) {
       return res.status(422).json({

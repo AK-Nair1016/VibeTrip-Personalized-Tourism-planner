@@ -23,12 +23,10 @@ interface LoginData {
   password: string;
 }
 
-// Finding user by email
 export const findUserByEmail = async (email: string) => {
   return User.findOne({ email }).select("+passwordHash");
 };
 
-// Finding user by ID
 export const findUserById = async (id: string) => {
   return User.findById(id);
 };
@@ -59,6 +57,7 @@ const generateAuthTokens = (user: any) => {
     refreshToken
   };
 };
+
 export const refreshAccessToken=(refreshToken:string)=>{
   const payload =verifyRefreshToken(refreshToken);
   const accessToken = signAccessToken({
@@ -68,7 +67,6 @@ export const refreshAccessToken=(refreshToken:string)=>{
   return accessToken
 }
 
-//Google OAuth Login
 export const googleLogin = async (user: any) => {
   // TODO: Replace `any` with a proper Mongoose User document type.
   const tokens = generateAuthTokens(user);
@@ -79,7 +77,6 @@ export const googleLogin = async (user: any) => {
   };
 };
 
-// Signup
 export const signup = async (data: SignupData) => {
   const { userName, name, email, password } = data;
 
@@ -112,7 +109,6 @@ export const signup = async (data: SignupData) => {
   };
 };
 
-// Login
 export const login = async (data: LoginData) => {
   const { email, password } = data;
 
@@ -146,35 +142,27 @@ export const login = async (data: LoginData) => {
     ...tokens
   };
 };
-// forgot Password
+
 export const forgotPassword = async(email:string)=>{
   const user =await User.findOne({email})
   .select("+passwordHash");
-  /*
-   * Do not reveal whether the email exists.
-   * This prevents account enumeration.
-   */
+  // Return silently so the response does not reveal whether the email exists
   if(!user){
     return;
   }
-    /*
-   * Google-only accounts do not have a local password.
-   * Do not create a password through this endpoint.
-   */
+  // Google-only accounts have no local password to reset
   if(!user.passwordHash){
     return;
   }
 
-  //cryptographically secure random token
   const resetToken =crypto.randomBytes(32).toString("hex");
-  
-  //Hash the token before storing it in MongoDB
+
+  // Only the hash is stored; the raw token goes to the user
   const hashedToken =crypto
   .createHash("sha256")
   .update(resetToken)
   .digest("hex");
 
-  //set token expiry after 15minutes
   const resetTokenExpires =new Date(
     Date.now()+15*60*1000
   );
@@ -183,14 +171,7 @@ export const forgotPassword = async(email:string)=>{
   user.passwordResetExpires = resetTokenExpires;
 
   await user.save();
-    /*
-   * TODO:
-   * Send resetToken through the email service.
-   *
-   * The raw token is sent to the user.
-   * Only hashedToken is stored in MongoDB.
-   */
-  // TODO: Replace with email service
+  // TODO: replace these console logs with the email service
   console.log("[Forgot Password] Reset token generated");
   console.log("[Forgot Password] Email:", email);
   console.log("[Forgot Password] Raw token:", resetToken);
@@ -201,7 +182,7 @@ export const forgotPassword = async(email:string)=>{
   console.log("password reset token generated",resetToken);
 
 };
-//reset password
+
 export const resetPassword = async (
     token: string,
     newPassword: string
@@ -239,7 +220,7 @@ export const resetPassword = async (
     user.email
   );
 };
-// email verification
+
 export const verifyEmail =async(token: string)=>{
   const hashedToken = crypto
   .createHash("sha256")
@@ -260,7 +241,6 @@ export const verifyEmail =async(token: string)=>{
     );
   }
   user.isEmailVerified=true;
-  //invalidating token request
   user.emailVerificationToken=null;
   user.emailVerificationExpires=null;
   await user.save();
@@ -270,7 +250,7 @@ export const verifyEmail =async(token: string)=>{
     user.email
   );
 };
-// Generate email verification token
+
 export const generateEmailVerificationToken = async (
   userId: string
 ) => {

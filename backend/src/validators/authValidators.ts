@@ -1,4 +1,3 @@
-        //any type is temporary refactor later
 export const validateSignup = (body: any): string | null => { 
   const { userName, name, email, password } = body;
 
