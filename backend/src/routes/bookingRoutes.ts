@@ -2,6 +2,8 @@ import { Router } from "express";
 import {
   getBookings,
   getBookingById,
+  createCancellationQuote,
+  cancelBooking,
   createFlightBooking,
 } from "../controllers/bookingController";
 import { validateFlightBooking, validateBookingId } from "../validators/bookingValidators";
@@ -17,6 +19,20 @@ router.get(
   authGuard,
   validateRequest(validateBookingId, "params"),
   getBookingById
+);
+
+router.post(
+  "/:id/cancellation-quote",
+  authGuard,
+  validateRequest(validateBookingId, "params"),
+  createCancellationQuote
+);
+
+router.post(
+  "/:id/cancel",
+  authGuard,
+  validateRequest(validateBookingId, "params"),
+  cancelBooking
 );
 
 router.post(

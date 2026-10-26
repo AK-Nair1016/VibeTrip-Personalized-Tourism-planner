@@ -3,11 +3,14 @@ import { AppError } from "../utils/AppError";
 import {
   getOfferForCheckout,
   getDuffelOrderStatus,
+  createDuffelCancellationQuote,
+  confirmDuffelCancellation,
   type DuffelOrderPassenger,
   type FlightLiveStatus,
 } from "./duffelFlightService";
 import { Booking } from "../models/Booking";
-import { createFlightPaymentIntent } from "./stripeService";
+import { roundForCurrency } from "./fxService";
+import { createFlightPaymentIntent, refundPaymentIntent } from "./stripeService";
 
 // One traveller, as the client sends them. Duffel's pas_ ids are NOT here:
 // the server pairs travellers to ids by position (decision made 24 Oct).
@@ -176,4 +179,121 @@ export const getBookingById = async (data: GetBookingData) => {
   }
 
   return { ...booking, liveStatus };
+};
+
+// Step 1 of cancelling: ask Duffel what the refund would be and save the quote. Nothing is cancelled yet.
+export const createCancellationQuote = async (data: GetBookingData) => {
+  const { userId, bookingId } = data;
+
+  // Not lean(): we save the quote on this document below
+  const booking = await Booking.findOne({ _id: bookingId, userId });
+
+  if (!booking) {
+    throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
+  }
+
+  if (booking.type !== "flight" || booking.status !== "confirmed" || !booking.providerBookingId) {
+    throw new AppError("NOT_CANCELLABLE", "Only a confirmed flight booking can be cancelled", 409);
+  }
+
+  // Ask Duffel if this fare allows cancelling at all. If Duffel is down this throws 502:
+  // unlike the detail page, there is no safe answer to guess here.
+  const liveStatus = await getDuffelOrderStatus(booking.providerBookingId);
+
+  if (!liveStatus.availableActions.includes("cancel")) {
+    throw new AppError("NOT_CANCELLABLE", "This booking can no longer be cancelled", 409);
+  }
+
+  const quote = await createDuffelCancellationQuote(booking.providerBookingId);
+
+  // Refund at the rate locked at checkout, never today's rate
+  const userRefundAmount = roundForCurrency(quote.refundAmount * booking.fxRate, booking.currency);
+
+  // Saved on the booking so cancelBooking confirms THIS quote and the client cannot name its own
+  booking.cancellationQuote = {
+    quoteId: quote.quoteId,
+    providerRefundAmount: quote.refundAmount,
+    providerRefundCurrency: quote.refundCurrency,
+    userRefundAmount,
+    expiresAt: new Date(quote.expiresAt),
+  };
+  await booking.save();
+
+  return {
+    bookingId,
+    refundAmount: userRefundAmount,
+    currency: booking.currency,
+    expiresAt: quote.expiresAt,
+  };
+};
+
+// Step 2: confirm the saved quote with Duffel, then refund through Stripe.
+export const cancelBooking = async (data: GetBookingData) => {
+  const { userId, bookingId } = data;
+
+  const booking = await Booking.findOne({ _id: bookingId, userId });
+
+  if (!booking) {
+    throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
+  }
+
+  // A second call after a cancel lands here too, because the status is no longer "confirmed"
+  if (booking.type !== "flight" || booking.status !== "confirmed" || !booking.stripePaymentIntentId) {
+    throw new AppError("NOT_CANCELLABLE", "Only a confirmed flight booking can be cancelled", 409);
+  }
+
+  const quote = booking.cancellationQuote;
+
+  if (!quote || !quote.quoteId || typeof quote.userRefundAmount !== "number" || !quote.expiresAt) {
+    throw new AppError("QUOTE_REQUIRED", "Ask for a cancellation quote first", 409);
+  }
+
+  if (quote.expiresAt.getTime() <= Date.now()) {
+    throw new AppError("QUOTE_REQUIRED", "The cancellation quote expired, ask for a new one", 409);
+  }
+
+  // If Duffel refuses, this throws and the booking stays "confirmed" with nothing refunded
+  await confirmDuffelCancellation(quote.quoteId);
+
+  // The flight is cancelled now. Save that BEFORE touching Stripe, so a crash or a Stripe
+  // failure below still leaves a record of what is owed.
+  const refundAmount = quote.userRefundAmount;
+  const currency = booking.currency as CurrencyCode;
+
+  booking.status = "cancelled";
+  booking.cancelledAt = new Date();
+  booking.refundAmount = refundAmount;
+  booking.refundCurrency = currency;
+  booking.refundStatus = "pending";
+  await booking.save();
+
+  // A non-refundable fare quotes 0, and Stripe rejects a 0 refund, so there is nothing to send
+  if (refundAmount === 0) {
+    booking.refundStatus = "succeeded";
+    await booking.save();
+  } else {
+    try {
+      await refundPaymentIntent({
+        paymentIntentId: booking.stripePaymentIntentId,
+        amount: refundAmount,
+        currency,
+        bookingId,
+      });
+      booking.refundStatus = "succeeded";
+    } catch (error) {
+      // Decided 26 Oct: the cancellation stands, the failed refund is visible in the data
+      // (refundStatus "failed") and in this log, to be refunded by hand or retried later.
+      console.error(`Refund failed for booking ${bookingId}: ${refundAmount} ${currency}`, error);
+      booking.refundStatus = "failed";
+    }
+    await booking.save();
+  }
+
+  return {
+    bookingId,
+    status: booking.status,
+    refundAmount,
+    currency,
+    refundStatus: booking.refundStatus,
+  };
 };

@@ -79,3 +79,30 @@ export const cancelPaymentIntent = async (paymentIntentId: string): Promise<Stri
     throw new AppError("PROVIDER_ERROR", "The payment provider could not release the payment hold", 502);
   }
 };
+
+interface RefundData {
+  paymentIntentId: string;
+  amount: number;
+  currency: CurrencyCode;
+  bookingId: string;
+}
+
+// Returns money that was already captured. amount is in the booking currency, same as the charge.
+export const refundPaymentIntent = async (data: RefundData): Promise<Stripe.Refund> => {
+  const { paymentIntentId, amount, currency, bookingId } = data;
+
+  try {
+    return await stripe.refunds.create(
+      {
+        payment_intent: paymentIntentId,
+        amount: toMinorUnits(amount, currency),
+      },
+      // A retried call cannot refund the same booking twice
+      { idempotencyKey: `refund-${bookingId}` }
+    );
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    console.error(`Stripe error refunding ${paymentIntentId}: ${reason}`);
+    throw new AppError("PROVIDER_ERROR", "The payment provider could not refund the payment", 502);
+  }
+};

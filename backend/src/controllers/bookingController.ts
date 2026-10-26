@@ -3,6 +3,8 @@ import {
   createFlightBooking as createFlightBookingService,
   getUserBookings as getUserBookingsService,
   getBookingById as getBookingByIdService,
+  createCancellationQuote as createCancellationQuoteService,
+  cancelBooking as cancelBookingService,
 } from "../services/bookingService";
 import { catchAsync } from "../utils/catchAsync";
 
@@ -37,6 +39,42 @@ export const getBookingById = catchAsync(async (req: Request, res: Response) => 
   res.status(200).json({
     success: true,
     message: "Booking fetched",
+    data: booking,
+  });
+});
+
+export const createCancellationQuote = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const id = req.params.id as string;
+
+  const quote = await createCancellationQuoteService({ userId, bookingId: id });
+
+  res.status(200).json({
+    success: true,
+    message: "Cancellation quote created",
+    data: quote,
+  });
+});
+
+export const cancelBooking = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const id = req.params.id as string;
+
+  const booking = await cancelBookingService({ userId, bookingId: id });
+
+  res.status(200).json({
+    success: true,
+    message: "Booking cancelled",
     data: booking,
   });
 });

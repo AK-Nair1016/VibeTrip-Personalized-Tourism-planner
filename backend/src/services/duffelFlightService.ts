@@ -402,3 +402,50 @@ export const getDuffelOrderStatus = async (orderId: string): Promise<FlightLiveS
     syncedAt: order.synced_at,
   };
 };
+
+// What Duffel would refund, in the base currency. Duffel's amount is a string, ours is a number.
+export interface DuffelCancellationQuote {
+  quoteId: string;
+  refundAmount: number;
+  refundCurrency: string;
+  expiresAt: string;
+}
+
+type DuffelCancellationResponse = {
+  data: {
+    id: string;
+    refund_amount: string;
+    refund_currency: string;
+    expires_at: string;
+  };
+};
+
+// POST /air/order_cancellations. Only a quote, nothing is cancelled yet.
+export const createDuffelCancellationQuote = async (
+  orderId: string
+): Promise<DuffelCancellationQuote> => {
+  const body = { data: { order_id: orderId } };
+
+  const result = await duffelRequest<DuffelCancellationResponse>("/air/order_cancellations", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  const quote = result.data;
+
+  return {
+    quoteId: quote.id,
+    // Duffel sends money as text such as "109.28"
+    refundAmount: Number(quote.refund_amount),
+    refundCurrency: quote.refund_currency,
+    expiresAt: quote.expires_at,
+  };
+};
+
+// POST /air/order_cancellations/:id/actions/confirm. This really cancels the flight.
+// Duffel only confirms the most recent quote for an order.
+export const confirmDuffelCancellation = async (quoteId: string): Promise<void> => {
+  // The answer holds nothing we need. duffelRequest throws if Duffel refuses (expired or old quote).
+  await duffelRequest<unknown>(`/air/order_cancellations/${quoteId}/actions/confirm`, {
+    method: "POST",
+  });
+};

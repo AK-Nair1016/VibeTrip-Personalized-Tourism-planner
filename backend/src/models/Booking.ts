@@ -12,6 +12,7 @@ export const SUPPORTED_CURRENCIES = ["INR", "AED", "GBP", "EUR", "USD", "SGD", "
 
 export const BOOKING_TYPES = ["flight", "hotel"] as const;
 export const BOOKING_PROVIDERS = ["duffel", "seeded"] as const;
+export const REFUND_STATUSES = ["pending", "succeeded", "failed"] as const;
 
 const bookingSchema = new Schema(
   {
@@ -36,9 +37,20 @@ const bookingSchema = new Schema(
 
     snapshot: { type: Schema.Types.Mixed, required: true },
 
+    // The last quote Duffel gave us. Cancel confirms this one, so the client never sends a quote id or amount.
+    cancellationQuote: {
+      quoteId: { type: String },
+      providerRefundAmount: { type: Number, min: 0 },
+      providerRefundCurrency: { type: String },
+      userRefundAmount: { type: Number, min: 0 }, // in the booking currency, at the locked fxRate
+      expiresAt: { type: Date },
+    },
+
     cancelledAt: { type: Date },
     refundAmount: { type: Number, min: 0 },
     refundCurrency: { type: String, enum: SUPPORTED_CURRENCIES },
+    // "failed" means Duffel cancelled but Stripe did not refund: it needs a manual or retried refund
+    refundStatus: { type: String, enum: REFUND_STATUSES },
   },
   { timestamps: true }
 );
