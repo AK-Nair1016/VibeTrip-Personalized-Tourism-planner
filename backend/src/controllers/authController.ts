@@ -10,8 +10,10 @@ import {
   refreshAccessToken
 } from "../services/authService";
 
+import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
 import { catchAsync } from "../utils/catchAsync";
+import { refreshCookieOptions } from "../utils/cookies";
 
 export const refresh =catchAsync(
   async(req:Request,res:Response)=>{
@@ -19,8 +21,8 @@ export const refresh =catchAsync(
 
     if(!refreshToken){
       throw new AppError(
-        "MISSING REFRESH TOKEN",
-        " Refresh token is required",
+        "MISSING_REFRESH_TOKEN",
+        "Refresh token is required",
         401
       );
     }
@@ -28,7 +30,7 @@ export const refresh =catchAsync(
 
     res.status(200).json({
       success: true,
-      message:"Access token refresher successfully",
+      message:"Access token refreshed successfully",
       data:{
         accessToken,
       },
@@ -50,12 +52,7 @@ export const signup = catchAsync(
       password
     });
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false, //TODO: change it while on deployment
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions());
 
     res.status(201).json({
       success: true,
@@ -81,12 +78,7 @@ export const login = catchAsync(
       password
     });
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false, //TODO: change it while on deployment
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions());
 
     res.status(200).json({
       success: true,
@@ -111,33 +103,21 @@ export const googleLogin = catchAsync(
       );
     }
 
-    const {
-      user: sanitizedUser,
-      accessToken,
-      refreshToken
-    } = await googleAuthService(user);
+    const { refreshToken } = await googleAuthService(user);
 
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie("refreshToken", refreshToken, refreshCookieOptions());
 
-    res.status(200).json({
-      success: true,
-      message: "Google authentication successful",
-      data: {
-        user: sanitizedUser,
-        accessToken
-      }
-    });
+    // This is a browser redirect, so there is no JSON to send and no token may go in the URL
+    // (URLs end up in history and logs). The frontend page lands here, then calls
+    // POST /auth/refresh: the cookie we just set makes that return the access token.
+    res.redirect(`${env.CLIENT_URL}/auth/callback`);
   }
 );
 
 export const logout = catchAsync(
   async (req: Request, res: Response) => {
-    res.clearCookie("refreshToken");
+    // Needs the same options the cookie was set with, or a browser in production keeps it
+    res.clearCookie("refreshToken", refreshCookieOptions());
 
     res.status(200).json({
       success: true,

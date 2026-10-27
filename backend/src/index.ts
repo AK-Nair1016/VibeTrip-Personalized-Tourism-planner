@@ -1,7 +1,10 @@
 import cors from "cors";
 import express from "express";
 import cookieParser from "cookie-parser";
+import mongoose from "mongoose";
 import { connectDb } from "./config/db";
+import { Booking } from "./models/Booking";
+import { env } from "./config/env";
 import bookingRoutes from "./routes/bookingRoutes";
 import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
@@ -13,7 +16,8 @@ import passport from "./config/passport";
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+// Only the frontend may call the API from a browser, and credentials: true lets it send the refresh cookie
+app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 // Stripe's signature check needs the exact raw bytes it sent, so this path must get a Buffer.
 // It MUST come before express.json(), which would parse the body and break the check.
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
@@ -34,7 +38,14 @@ app.use("/api/payments", paymentRoutes);
 app.use(errorHandler);
 
 connectDb()
-  .then(() => {
+  .then(async () => {
+    // Wait for the unique indexes to be built before taking requests. If the build fails (for example an
+    // index of the same name with other options already exists), stop here: running without the
+    // duplicate-booking guard is worse than not starting.
+    if (mongoose.connection.readyState === 1) {
+      await Booking.init();
+    }
+
     app.listen(port, () => {
       console.log(
         `VibeTrip API running on http://localhost:${port}`

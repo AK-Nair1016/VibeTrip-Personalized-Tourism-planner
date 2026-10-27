@@ -1,5 +1,15 @@
-export const validateSignup = (body: any): string | null => { 
-  const { userName, name, email, password } = body;
+type SignupBody = { userName?: unknown; name?: unknown; email?: unknown; password?: unknown };
+type LoginBody = { email?: unknown; password?: unknown };
+type ForgotPasswordBody = { email?: unknown };
+type ResetPasswordBody = { password?: unknown };
+
+export const validateSignup = (body: unknown): string | null => {
+  // Express 5 leaves req.body undefined when the client sends no JSON
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
+
+  const { userName, name, email, password } = body as SignupBody;
 
   if (!userName) {
     return "Username is required";
@@ -15,6 +25,16 @@ export const validateSignup = (body: any): string | null => {
 
   if (!password) {
     return "Password is required";
+  }
+
+  // A client can send a number or an object instead of text, and .length on those gives no error
+  if (
+    typeof userName !== "string" ||
+    typeof name !== "string" ||
+    typeof email !== "string" ||
+    typeof password !== "string"
+  ) {
+    return "Username, name, email and password must be text";
   }
 
   if (userName.length < 3 || userName.length > 20) {
@@ -40,8 +60,12 @@ export const validateSignup = (body: any): string | null => {
   return null;
 };
 
-export const validateLogin = (body: any): string | null => {
-  const { email, password } = body;
+export const validateLogin = (body: unknown): string | null => {
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
+
+  const { email, password } = body as LoginBody;
 
   if (!email) {
     return "Email is required";
@@ -51,23 +75,44 @@ export const validateLogin = (body: any): string | null => {
     return "Password is required";
   }
 
+  if (typeof email !== "string" || typeof password !== "string") {
+    return "Email and password must be text";
+  }
+
   return null;
 };
 
-export const validateForgetPassword =(body:any): string| null =>{
-  const {email}= body;
-  if(!email){
-    return "Email is required"
+export const validateForgetPassword = (body: unknown): string | null => {
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
   }
-  return null;
-}
-// TODO: Replace `any` with a proper request body type.
 
-export const validateResetPassword = (body: any): string | null => {
-  const { password } = body;
+  const { email } = body as ForgotPasswordBody;
+
+  if (!email) {
+    return "Email is required";
+  }
+
+  if (typeof email !== "string") {
+    return "Email must be text";
+  }
+
+  return null;
+};
+
+export const validateResetPassword = (body: unknown): string | null => {
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
+
+  const { password } = body as ResetPasswordBody;
 
   if (!password) {
     return "Password is required";
+  }
+
+  if (typeof password !== "string") {
+    return "Password must be text";
   }
 
   if (password.length < 8) {

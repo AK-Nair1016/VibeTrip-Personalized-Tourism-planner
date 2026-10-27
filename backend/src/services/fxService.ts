@@ -1,4 +1,5 @@
-import { SUPPORTED_CURRENCIES, type CurrencyCode } from "@vibetrip/shared-types";
+import type { CurrencyCode } from "@vibetrip/shared-types";
+import { SUPPORTED_CURRENCIES } from "../config/constants";
 import { env } from "../config/env";
 import { AppError } from "../utils/AppError";
 

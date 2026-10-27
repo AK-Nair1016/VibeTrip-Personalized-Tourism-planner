@@ -1,5 +1,6 @@
-import { SUPPORTED_CURRENCIES } from "@vibetrip/shared-types";
-import type { PassengerInput } from "../services/bookingService";
+import validator from "validator";
+import type { PassengerInput } from "@vibetrip/shared-types";
+import { SUPPORTED_CURRENCIES } from "../config/constants";
 import { isDateString } from "./flightValidators";
 
 const TITLES = ["mr", "ms", "mrs", "miss", "dr"];
@@ -105,9 +106,16 @@ export const validateFlightBooking = (body: unknown): string | null => {
       return `${label}: email is not valid`;
     }
 
-    // International format: "+", then 8 to 15 digits (Duffel wants E.164)
-    if (typeof phoneNumber !== "string" || !/^\+\d{8,15}$/.test(phoneNumber)) {
-      return `${label}: phone number must look like +919999999999`;
+    // Duffel wants E.164: "+", the country code, digits only. The regex enforces that shape (some
+    // country patterns would let spaces and dashes through) and also caps the length. Then "any"
+    // tries every country's own number pattern, so each country's real digit count is enforced.
+    // Mobile numbers only; a landline is refused.
+    if (
+      typeof phoneNumber !== "string" ||
+      !/^\+\d{8,15}$/.test(phoneNumber) ||
+      !validator.isMobilePhone(phoneNumber, "any", { strictMode: true })
+    ) {
+      return `${label}: phone number must be a valid mobile number with country code, like +919999999999`;
     }
   }
 

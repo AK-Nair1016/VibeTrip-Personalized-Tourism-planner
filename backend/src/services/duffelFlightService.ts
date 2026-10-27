@@ -7,6 +7,7 @@ import type {
   FlightSegment,
   FlightSlice,
   OfferPassenger,
+  OrderPassenger,
 } from "@vibetrip/shared-types";
 import type { CityCode } from "../config/cities";
 import { env } from "../config/env";
@@ -25,6 +26,58 @@ export type FlightSearchParams = {
   cabinClass: CabinClass;
   maxConnections: number;
   currency: CurrencyCode;
+};
+
+// The search as it arrives in the URL: every value is text, and most are optional.
+// The validator has already checked the values, so converting them here is safe.
+export type FlightSearchQuery = {
+  origin: string;
+  destination: string;
+  departureDate: string;
+  returnDate?: string;
+  adults: string;
+  cabinClass?: string;
+  maxConnections?: string;
+  currency?: string;
+};
+
+export const DEFAULT_CURRENCY: CurrencyCode = "INR";
+const DEFAULT_CABIN_CLASS: CabinClass = "economy";
+const DEFAULT_MAX_CONNECTIONS = 1;
+
+// Turns the URL values into typed search params and fills in the defaults (decision 2 in DECISIONS.md)
+const toSearchParams = (query: FlightSearchQuery): FlightSearchParams => {
+  let cabinClass: CabinClass = DEFAULT_CABIN_CLASS;
+  if (query.cabinClass) {
+    cabinClass = query.cabinClass as CabinClass;
+  }
+
+  let currency: CurrencyCode = DEFAULT_CURRENCY;
+  if (query.currency) {
+    currency = query.currency as CurrencyCode;
+  }
+
+  // Check for undefined, not "falsy", because "0" (direct flights only) is valid
+  let maxConnections = DEFAULT_MAX_CONNECTIONS;
+  if (query.maxConnections !== undefined) {
+    maxConnections = Number(query.maxConnections);
+  }
+
+  const params: FlightSearchParams = {
+    origin: query.origin as CityCode,
+    destination: query.destination as CityCode,
+    departureDate: query.departureDate,
+    adults: Number(query.adults),
+    cabinClass,
+    maxConnections,
+    currency,
+  };
+
+  if (query.returnDate) {
+    params.returnDate = query.returnDate;
+  }
+
+  return params;
 };
 
 // The parts of Duffel's offer JSON we read. Duffel sends much more; we ignore the rest.
@@ -199,8 +252,9 @@ const mapOffer = (raw: DuffelOffer, price: FlightOffer["price"]): FlightOffer =>
 };
 
 export const searchFlights = async (
-  params: FlightSearchParams
+  query: FlightSearchQuery
 ): Promise<FlightSearchResult> => {
+  const params = toSearchParams(query);
   const requestBody = buildOfferRequestBody(params);
 
   const result = await duffelRequest<DuffelSearchResponse>(
@@ -307,22 +361,11 @@ export const getOfferForCheckout = async (
   return { offer, conversion };
 };
 
-export interface DuffelOrderPassenger {
-  id: string;
-  title: string;
-  gender: string;
-  givenName: string;
-  familyName: string;
-  bornOn: string;
-  email: string;
-  phoneNumber: string;
-}
-
 export interface DuffelOrderData {
   offerId: string;
   providerAmount: number;
   providerCurrency: string;
-  passengers: DuffelOrderPassenger[];
+  passengers: OrderPassenger[];
 }
 
 export interface DuffelOrderResult {

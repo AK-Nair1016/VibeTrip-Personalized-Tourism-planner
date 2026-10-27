@@ -18,7 +18,7 @@ router.get(
     getUserProfile
 );
 router.put(
-  "/update/me",
+  "/me",
   authGuard,
   validateRequest(validateUpdateProfile),
   updateProfile

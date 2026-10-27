@@ -31,8 +31,10 @@ export const findUserById = async (id: string) => {
   return User.findById(id);
 };
 
-// TODO: Replace `any` with a proper Mongoose User document type.
-const sanitizeUser = (user: any) => {
+// A User as loaded from MongoDB (the document, with methods like toObject)
+export type UserDocument = InstanceType<typeof User>;
+
+export const sanitizeUser = (user: UserDocument) => {
   const userObject = user.toObject();
 
   delete userObject.passwordHash;
@@ -41,8 +43,7 @@ const sanitizeUser = (user: any) => {
   return userObject;
 };
 
-// TODO: Replace `any` with a proper Mongoose User document type.
-const generateAuthTokens = (user: any) => {
+const generateAuthTokens = (user: UserDocument) => {
   const payload: TokenPayload = {
     userId: user._id.toString(),
     role: user.role
@@ -59,7 +60,20 @@ const generateAuthTokens = (user: any) => {
 };
 
 export const refreshAccessToken=(refreshToken:string)=>{
-  const payload =verifyRefreshToken(refreshToken);
+  let payload: TokenPayload;
+
+  // jwt.verify throws for a forged, malformed or expired token. That is the client's
+  // problem (401), not a server error, so it must not reach the error handler as a plain Error.
+  try {
+    payload = verifyRefreshToken(refreshToken);
+  } catch (error) {
+    throw new AppError(
+      "INVALID_REFRESH_TOKEN",
+      "Refresh token is invalid or expired, please log in again",
+      401
+    );
+  }
+
   const accessToken = signAccessToken({
     userId: payload.userId,
     role: payload.role
@@ -67,8 +81,7 @@ export const refreshAccessToken=(refreshToken:string)=>{
   return accessToken
 }
 
-export const googleLogin = async (user: any) => {
-  // TODO: Replace `any` with a proper Mongoose User document type.
+export const googleLogin = async (user: UserDocument) => {
   const tokens = generateAuthTokens(user);
 
   return {

@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getBookings,
   getBookingById,
+  getBookingStatus,
   createCancellationQuote,
   cancelBooking,
   createFlightBooking,
@@ -19,6 +20,13 @@ router.get(
   authGuard,
   validateRequest(validateBookingId, "params"),
   getBookingById
+);
+
+router.get(
+  "/:id/status",
+  authGuard,
+  validateRequest(validateBookingId, "params"),
+  getBookingStatus
 );
 
 router.post(

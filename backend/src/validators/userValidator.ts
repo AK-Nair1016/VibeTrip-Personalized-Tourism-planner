@@ -1,5 +1,12 @@
-export const validateUpdateProfile =(body: any):string |null=>{
-    const {userName, name, avatarUrl }=body;
+type UpdateProfileBody = { userName?: unknown; name?: unknown; avatarUrl?: unknown };
+
+export const validateUpdateProfile =(body: unknown):string |null=>{
+  // Express 5 leaves req.body undefined when the client sends no JSON
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
+
+  const {userName, name, avatarUrl }=body as UpdateProfileBody;
   if (userName !== undefined) {
     if (typeof userName !== "string") {
       return "Username must be a string";

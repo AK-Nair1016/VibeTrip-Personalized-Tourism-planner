@@ -3,6 +3,7 @@ import {
   createFlightBooking as createFlightBookingService,
   getUserBookings as getUserBookingsService,
   getBookingById as getBookingByIdService,
+  getBookingStatus as getBookingStatusService,
   createCancellationQuote as createCancellationQuoteService,
   cancelBooking as cancelBookingService,
 } from "../services/bookingService";
@@ -40,6 +41,24 @@ export const getBookingById = catchAsync(async (req: Request, res: Response) => 
     success: true,
     message: "Booking fetched",
     data: booking,
+  });
+});
+
+export const getBookingStatus = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const id = req.params.id as string;
+
+  const status = await getBookingStatusService({ userId, bookingId: id });
+
+  res.status(200).json({
+    success: true,
+    message: "Booking status fetched",
+    data: status,
   });
 });
 

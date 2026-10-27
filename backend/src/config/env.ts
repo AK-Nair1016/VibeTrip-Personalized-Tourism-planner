@@ -22,6 +22,16 @@ const getJwtExpiresIn = (
 };
 
 export const env = {
+  NODE_ENV: getEnv("NODE_ENV", "development"),
+
+  // The frontend's address: the only origin CORS lets in, and where Google login sends the browser back.
+  // Production has no default (the server will not start without it), and a trailing slash is dropped
+  // because the browser's Origin header never has one, so CORS would never match.
+  CLIENT_URL: getEnv(
+    "CLIENT_URL",
+    process.env.NODE_ENV === "production" ? undefined : "http://localhost:5173"
+  ).replace(/\/+$/, ""),
+
   JWT_ACCESS_SECRET: getEnv(
     "JWT_ACCESS_SECRET",
     "dev-access-secret"

@@ -1,28 +1,27 @@
-import type { CurrencyCode, FlightSlice, Money } from "@vibetrip/shared-types";
+import crypto from "crypto";
+import type {
+  CurrencyCode,
+  FlightSlice,
+  Money,
+  OrderPassenger,
+  PassengerInput,
+} from "@vibetrip/shared-types";
 import { AppError } from "../utils/AppError";
 import {
   getOfferForCheckout,
   getDuffelOrderStatus,
   createDuffelCancellationQuote,
   confirmDuffelCancellation,
-  type DuffelOrderPassenger,
   type FlightLiveStatus,
 } from "./duffelFlightService";
 import { Booking } from "../models/Booking";
 import { roundForCurrency } from "./fxService";
-import { createFlightPaymentIntent, refundPaymentIntent } from "./stripeService";
-
-// One traveller, as the client sends them. Duffel's pas_ ids are NOT here:
-// the server pairs travellers to ids by position (decision made 24 Oct).
-export interface PassengerInput {
-  title: string;
-  givenName: string;
-  familyName: string;
-  bornOn: string;
-  gender: string;
-  email: string;
-  phoneNumber: string;
-}
+import {
+  cancelPaymentIntent,
+  createFlightPaymentIntent,
+  getPaymentIntentClientSecret,
+  refundPaymentIntent,
+} from "./stripeService";
 
 export interface CreateFlightBookingData {
   userId: string;
@@ -37,11 +36,184 @@ export interface FlightDraftSnapshot {
   slices: FlightSlice[];
   price: Money;
   expiresAt: string;
-  passengers: DuffelOrderPassenger[];
+  passengers: OrderPassenger[];
 }
 
-export const createFlightBooking = async (data: CreateFlightBookingData) => {
+interface CheckoutResult {
+  bookingId: string;
+  clientSecret: string;
+  totalAmount: number;
+  currency: string;
+}
+
+// A fingerprint of what the client asked for. Same fingerprint means the same request again
+// (a double click or a retry); a different one means the traveller changed something.
+const hashFlightRequest = (
+  offerId: string,
+  currency: string,
+  passengers: PassengerInput[]
+): string => {
+  // Fields are listed one by one, so the order of keys in the client's JSON cannot change the hash.
+  // The order of passengers does count, because passengers are paired to the offer by position.
+  const rows: string[][] = [];
+  for (const passenger of passengers) {
+    rows.push([
+      passenger.title,
+      passenger.givenName,
+      passenger.familyName,
+      passenger.bornOn,
+      passenger.gender,
+      passenger.email,
+      passenger.phoneNumber,
+    ]);
+  }
+
+  return crypto
+    .createHash("sha256")
+    .update(JSON.stringify({ offerId, currency, rows }))
+    .digest("hex");
+};
+
+// 11000 is MongoDB's "duplicate key" error: a unique index refused the insert
+const isDuplicateKeyError = (error: unknown): boolean => {
+  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === 11000;
+};
+
+type ExistingBooking = InstanceType<typeof Booking>;
+
+// Rebuilds the checkout answer for a booking that already exists
+const toCheckoutResult = async (booking: ExistingBooking): Promise<CheckoutResult> => {
+  const bookingId = booking._id.toString();
+
+  // The first request has saved the booking but is still talking to Stripe. We must not ask Stripe
+  // for the same PaymentIntent now: two calls with one idempotency key at the same moment make
+  // Stripe refuse one of them, and the first request would then wrongly mark the booking failed.
+  // The client retries in a moment and finds the saved PaymentIntent.
+  if (!booking.stripePaymentIntentId) {
+    throw new AppError(
+      "CHECKOUT_IN_PROGRESS",
+      "Another checkout for this fare is being created, try again in a moment",
+      409
+    );
+  }
+
+  const clientSecret = await getPaymentIntentClientSecret(booking.stripePaymentIntentId);
+
+  return {
+    bookingId,
+    clientSecret,
+    totalAmount: booking.totalAmount,
+    currency: booking.currency,
+  };
+};
+
+// Gives up an unpaid booking so the traveller can check out again with changed details.
+const releasePendingBooking = async (booking: ExistingBooking) => {
+  // One atomic step, like the webhook's: only a booking still waiting for payment is released.
+  // If the webhook just moved it to "authorized", the traveller has paid, so we must not cancel it.
+  // findOneAndUpdate skips the save hook, so the fields the hook would set are written here.
+  const released = await Booking.findOneAndUpdate(
+    { _id: booking._id, status: "pending_payment" },
+    { status: "failed", isLive: false },
+    { new: true }
+  );
+
+  if (!released) {
+    // Nothing matched because the status is no longer pending. If another request just released
+    // it (a double click after the window), there is nothing left to do here: carry on.
+    const current = await Booking.findById(booking._id).select("status").lean();
+    if (current && (current.status === "failed" || current.status === "cancelled")) {
+      return;
+    }
+
+    throw new AppError(
+      "BOOKING_EXISTS",
+      "A payment for this fare is already being processed",
+      409
+    );
+  }
+
+  // Free the card hold. If this fails Stripe lets the unused hold expire by itself.
+  if (released.stripePaymentIntentId) {
+    try {
+      await cancelPaymentIntent(released.stripePaymentIntentId);
+    } catch (error) {
+      console.error(`Could not release the hold for replaced booking ${released.id}`, error);
+    }
+  }
+};
+
+interface ExistingCheckoutLookup {
+  userId: string;
+  dedupeKey: string;
+  requestHash: string;
+}
+
+// How long a traveller has to pay. After this an unpaid booking is let go, so the fare is free again.
+const PAYMENT_WINDOW_MS = 15 * 60 * 1000;
+
+// Looks for a booking that already answers this checkout. Returns its answer, returns null
+// when the caller should go on and create a new booking, or throws when the request is refused.
+const findExistingCheckout = async (
+  lookup: ExistingCheckoutLookup
+): Promise<CheckoutResult | null> => {
+  const { userId, dedupeKey, requestHash } = lookup;
+
+  // Is this user already buying this fare?
+  const live = await Booking.findOne({ userId, dedupeKey, isLive: true });
+
+  if (!live) {
+    return null;
+  }
+
+  // Paid or confirmed: a second copy must never be created
+  if (live.status !== "pending_payment") {
+    throw new AppError("BOOKING_EXISTS", "You already have a booking for this fare", 409);
+  }
+
+  // An unpaid booking is good until the payment window ends or Duffel's fare expires, whichever
+  // is first. Past that, nobody should still be paying on it, so let it go and start afresh.
+  // No money has moved on an unpaid booking, so releasing it costs the traveller nothing.
+  const snapshot = live.snapshot as FlightDraftSnapshot;
+  const windowEnd = live.createdAt.getTime() + PAYMENT_WINDOW_MS;
+  const payUntil = Math.min(windowEnd, new Date(snapshot.expiresAt).getTime());
+
+  if (payUntil <= Date.now()) {
+    await releasePendingBooking(live);
+    return null;
+  }
+
+  // Unpaid and identical: hand back the same checkout
+  if (live.requestHash === requestHash) {
+    return toCheckoutResult(live);
+  }
+
+  // Unpaid but different (a corrected name, another currency). Decided 26 Oct: never cancel a
+  // checkout the traveller may be paying on right now. They finish it, or wait for the window to end.
+  const minutesLeft = Math.max(1, Math.ceil((payUntil - Date.now()) / 60000));
+  throw new AppError(
+    "CHECKOUT_PENDING",
+    `You have an unpaid checkout for this fare. Finish it, or try again in ${minutesLeft} minute(s)`,
+    409
+  );
+};
+
+export const createFlightBooking = async (data: CreateFlightBookingData): Promise<CheckoutResult> => {
   const { userId, offerId, currency, passengers } = data;
+
+  const dedupeKey = `flight:${offerId}`;
+  const requestHash = hashFlightRequest(offerId, currency, passengers);
+
+  // Ask the database first: a repeat of an earlier request is answered without calling Duffel
+  // (the fare may even have expired since). The unique index below is what makes this race-proof.
+  const existing = await findExistingCheckout({
+    userId,
+    dedupeKey,
+    requestHash,
+  });
+  if (existing) {
+    return existing;
+  }
 
   // Re-fetch and price the offer. This throws 409 FARE_EXPIRED if the fare is gone.
   // The price comes from here, never from the client.
@@ -57,7 +229,7 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
   }
 
   // Fields are copied one by one (no spread), so anything extra the client sent is not saved.
-  const snapshotPassengers: DuffelOrderPassenger[] = [];
+  const snapshotPassengers: OrderPassenger[] = [];
   for (let i = 0; i < passengers.length; i++) {
     const passenger = passengers[i];
     snapshotPassengers.push({
@@ -83,19 +255,42 @@ export const createFlightBooking = async (data: CreateFlightBookingData) => {
 
   // Save the booking first: Stripe needs its id, and the webhook finds it again
   // through that id. The rate is locked here, so refunds can use the same rate later.
-  const booking = await Booking.create({
-    userId,
-    type: "flight",
-    provider: "duffel",
-    status: "pending_payment",
-    totalAmount: conversion.amount,
-    currency: conversion.currency,
-    providerAmount: conversion.providerAmount,
-    providerCurrency: conversion.providerCurrency,
-    fxRate: conversion.rate,
-    fxRateAt: conversion.rateAt,
-    snapshot,
-  });
+  let booking: ExistingBooking;
+  try {
+    booking = await Booking.create({
+      userId,
+      type: "flight",
+      provider: "duffel",
+      status: "pending_payment",
+      totalAmount: conversion.amount,
+      currency: conversion.currency,
+      providerAmount: conversion.providerAmount,
+      providerCurrency: conversion.providerCurrency,
+      fxRate: conversion.rate,
+      fxRateAt: conversion.rateAt,
+      snapshot,
+      dedupeKey,
+      requestHash,
+    });
+  } catch (error) {
+    if (!isDuplicateKeyError(error)) {
+      throw error;
+    }
+
+    // A unique index refused the insert: another request for this user and fare got in between
+    // our look-up and our insert (a double click, two tabs). Answer with what that request made.
+    const winner = await findExistingCheckout({
+      userId,
+      dedupeKey,
+      requestHash,
+    });
+    if (winner) {
+      return winner;
+    }
+
+    // The winner finished (failed or cancelled) and freed the slot while we looked: nothing to return
+    throw new AppError("CHECKOUT_IN_PROGRESS", "Could not start the checkout, please try again", 409);
+  }
 
   const bookingId = booking._id.toString();
 
@@ -179,6 +374,40 @@ export const getBookingById = async (data: GetBookingData) => {
   }
 
   return { ...booking, liveStatus };
+};
+
+// What the traveller is told for each status. The app, not the bank statement, is where they
+// learn the result, so a failed payment says plainly that nothing was charged.
+const STATUS_MESSAGES: Record<string, string> = {
+  pending_payment: "Waiting for your payment",
+  authorized: "Payment received, we are confirming your booking",
+  confirmed: "Your booking is confirmed",
+  failed:
+    "The booking could not be completed and you were not charged. If your bank shows a pending hold, it releases it within a few days",
+  cancelled: "This booking was cancelled",
+};
+
+// A light check for the "did my payment work?" page. Unlike getBookingById it never calls Duffel,
+// so the frontend can poll it every few seconds, and it also answers for failed and pending bookings
+// that the history list hides.
+export const getBookingStatus = async (data: GetBookingData) => {
+  const { userId, bookingId } = data;
+
+  // Same owner check as getBookingById: someone else's booking looks like a missing one
+  const booking = await Booking.findOne({ _id: bookingId, userId })
+    .select("status refundStatus")
+    .lean();
+
+  if (!booking) {
+    throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
+  }
+
+  return {
+    bookingId,
+    status: booking.status,
+    message: STATUS_MESSAGES[booking.status as string],
+    refundStatus: booking.refundStatus ?? null,
+  };
 };
 
 // Step 1 of cancelling: ask Duffel what the refund would be and save the quote. Nothing is cancelled yet.

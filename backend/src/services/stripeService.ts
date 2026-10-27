@@ -44,6 +44,25 @@ export const createFlightPaymentIntent = async (data: PaymentIntentData) => {
   return { paymentIntentId: intent.id, clientSecret: intent.client_secret };
 };
 
+// Used when the same checkout is asked for again: the client needs the secret of the PaymentIntent
+// that already exists, not a new one
+export const getPaymentIntentClientSecret = async (paymentIntentId: string): Promise<string> => {
+  let intent: Stripe.PaymentIntent;
+  try {
+    intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    console.error(`Stripe error retrieving ${paymentIntentId}: ${reason}`);
+    throw new AppError("PROVIDER_ERROR", "The payment provider could not load the payment", 502);
+  }
+
+  if (!intent.client_secret) {
+    throw new AppError("PROVIDER_ERROR", "The payment provider did not return a payment secret", 502);
+  }
+
+  return intent.client_secret;
+};
+
 // Checks locally (no network) that the event really came from Stripe
 export const constructWebhookEvent = (rawBody: Buffer, signature: string): Stripe.Event => {
   let event: Stripe.Event;

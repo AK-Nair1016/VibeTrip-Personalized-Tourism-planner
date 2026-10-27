@@ -1,25 +1,18 @@
 import { User } from "../models/User";
 import { AppError } from "../utils/AppError";
+import { sanitizeUser } from "./authService";
 
 interface UpdateProfileData {
   userName?: string;
   name?: string;
   avatarUrl?: string;
 }
-//TODO: Replace `any` with a proper Mongoose User document/object type.
-const sanitizeUser =(user:any)=>{
-    const userObject =user.toObject();
-
-    delete userObject.passwordHash;
-    delete userObject.stripeCustomerId;
-
-    return userObject;
-};
 
 export const getCurrentUser =async(userId:string)=>{
     const user =await User.findById(userId);
 
-    if(!userId){
+    // Check what the database returned: a valid token can outlive a deleted account
+    if(!user){
         throw new AppError(
             "USER_NOT_FOUND",
             "User not found",
