@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { TokenExpiredError } from "jsonwebtoken";
 
 import { verifyAccessToken } from "../utils/jwt";
 
@@ -36,12 +37,17 @@ export const authGuard = (
 
     next();
   } catch (error) {
-    next(
-      new AppError(
-        "UNAUTHORIZED",
-        "Invalid or expired authentication token",
-        401
-      )
-    );
+    // The two errors thrown above already say what is wrong; pass them on untouched
+    if (error instanceof AppError) {
+      return next(error);
+    }
+
+    // The frontend needs to tell "expired" (refresh and retry) from "invalid" (log in again).
+    // Both stay 401, because the frontend retries on 401.
+    if (error instanceof TokenExpiredError) {
+      return next(new AppError("TOKEN_EXPIRED", "Access token has expired", 401));
+    }
+
+    next(new AppError("INVALID_TOKEN", "Access token is not valid", 401));
   }
 };

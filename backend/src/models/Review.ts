@@ -2,38 +2,24 @@ import { Schema, model, Types } from "mongoose";
 
 const reviewSchema = new Schema(
   {
-    userId: { type: Types.ObjectId, ref: "User", required: true, index: true },
     hotelId: { type: Types.ObjectId, ref: "Hotel", required: true, index: true },
-    bookingId: { type: Types.ObjectId, ref: "HotelBooking", required: true, unique: true },
+    // Seeded reviews have no user and no booking, only a made-up author name
+    userId: { type: Types.ObjectId, ref: "User", index: true },
+    bookingId: { type: Types.ObjectId, ref: "Booking" },
+    authorName: { type: String, required: true, trim: true, maxlength: 50 },
     rating: { type: Number, required: true, min: 1, max: 5 },
-    categoryRatings: {
-      cleanliness: { type: Number, min: 1, max: 5, required: true },
-      location: { type: Number, min: 1, max: 5, required: true },
-      service: { type: Number, min: 1, max: 5, required: true },
-      value: { type: Number, min: 1, max: 5, required: true },
-    },
-    text: { type: String, required: true, minlength: 10, maxlength: 2000 },
-    helpfulVotes: { type: Number, default: 0, min: 0 },
+    text: { type: String, required: true, trim: true, minlength: 10, maxlength: 2000 },
   },
   { timestamps: true }
 );
 
-// One review per completed booking — bookingId unique index enforces this at the DB level
+// One review per booking. Partial, because seeded reviews have no bookingId: with a plain unique index
+// every missing value counts as null, and the second seeded review would be refused.
+reviewSchema.index(
+  { bookingId: 1 },
+  { unique: true, partialFilterExpression: { bookingId: { $type: "objectId" } } }
+);
 
-// Post-save hook: recompute Hotel.guestRating / reviewCount rollup
-reviewSchema.post("save", async function () {
-  const Review = model("Review");
-  const Hotel = model("Hotel");
-  const stats = await Review.aggregate([
-    { $match: { hotelId: this.hotelId } },
-    { $group: { _id: "$hotelId", avg: { $avg: "$rating" }, count: { $sum: 1 } } },
-  ]);
-  if (stats[0]) {
-    await Hotel.findByIdAndUpdate(this.hotelId, {
-      guestRating: stats[0].avg,
-      reviewCount: stats[0].count,
-    });
-  }
-});
-
+// The hotel's average rating is NOT updated by a save hook: deleteOne never fires one.
+// reviewService.recomputeHotelRating runs after every create and delete instead.
 export const Review = model("Review", reviewSchema);

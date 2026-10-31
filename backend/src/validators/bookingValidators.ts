@@ -1,6 +1,8 @@
-import { SUPPORTED_CURRENCIES } from "@vibetrip/shared-types";
-import type { PassengerInput } from "../services/bookingService";
+import validator from "validator";
+import type { PassengerInput } from "@vibetrip/shared-types";
+import { SUPPORTED_CURRENCIES } from "../config/constants";
 import { isDateString } from "./flightValidators";
+import { checkStay, isObjectId } from "./hotelValidators";
 
 const TITLES = ["mr", "ms", "mrs", "miss", "dr"];
 const GENDERS = ["m", "f"];
@@ -22,6 +24,18 @@ const isName = (value: unknown): boolean => {
   const length = value.trim().length;
   return length >= 1 && length <= MAX_NAME_LENGTH;
 };
+
+const isEmailAddress = (value: unknown): value is string =>
+  typeof value === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+// Duffel wants E.164: "+", the country code, digits only. The regex enforces that shape (some
+// country patterns would let spaces and dashes through) and also caps the length. Then "any"
+// tries every country's own number pattern, so each country's real digit count is enforced.
+// Mobile numbers only; a landline is refused.
+const isMobileNumber = (value: unknown): value is string =>
+  typeof value === "string" &&
+  /^\+\d{8,15}$/.test(value) &&
+  validator.isMobilePhone(value, "any", { strictMode: true });
 
 // We do NOT check here that passengers.length matches the offer. That needs
 // the offer from Duffel, so the service does it.
@@ -101,14 +115,118 @@ export const validateFlightBooking = (body: unknown): string | null => {
       return `${label}: gender must be one of: ${GENDERS.join(", ")}`;
     }
 
-    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isEmailAddress(email)) {
       return `${label}: email is not valid`;
     }
 
-    // International format: "+", then 8 to 15 digits (Duffel wants E.164)
-    if (typeof phoneNumber !== "string" || !/^\+\d{8,15}$/.test(phoneNumber)) {
-      return `${label}: phone number must look like +919999999999`;
+    if (!isMobileNumber(phoneNumber)) {
+      return `${label}: phone number must be a valid mobile number with country code, like +919999999999`;
     }
+  }
+
+  return null;
+};
+
+type HotelBookingBody = {
+  hotelId?: unknown;
+  roomId?: unknown;
+  setupIntentId?: unknown;
+  checkIn?: unknown;
+  checkOut?: unknown;
+  rooms?: unknown;
+  guests?: unknown;
+  leadGuest?: unknown;
+  email?: unknown;
+  phoneNumber?: unknown;
+  currency?: unknown;
+};
+
+// Checks the shape only. Whether the room exists, fits the guests and is free for the dates
+// needs the database, so the service decides that.
+export const validateHotelBooking = (body: unknown): string | null => {
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
+
+  const {
+    hotelId,
+    roomId,
+    setupIntentId,
+    checkIn,
+    checkOut,
+    rooms,
+    guests,
+    leadGuest,
+    email,
+    phoneNumber,
+    currency,
+  } = body as HotelBookingBody;
+
+  if (!hotelId) {
+    return "Hotel id is required";
+  }
+
+  if (!isObjectId(hotelId)) {
+    return "Hotel id is not valid";
+  }
+
+  if (!roomId) {
+    return "Room id is required";
+  }
+
+  if (!isObjectId(roomId)) {
+    return "Room id is not valid";
+  }
+
+  if (!setupIntentId) {
+    return "Saved card is required, set up a card first";
+  }
+
+  if (typeof setupIntentId !== "string" || !setupIntentId.startsWith("seti_")) {
+    return "Saved card id is not valid";
+  }
+
+  if (rooms === undefined) {
+    return "Number of rooms is required";
+  }
+
+  // Dates, guests and rooms follow the same rules as the search
+  const stayError = checkStay({ checkIn, checkOut, guests, rooms });
+  if (stayError) {
+    return stayError;
+  }
+
+  if (!leadGuest || typeof leadGuest !== "object") {
+    return "Lead guest details are required";
+  }
+
+  const { givenName, familyName } = leadGuest as { givenName?: unknown; familyName?: unknown };
+
+  if (!isName(givenName)) {
+    return `Lead guest first name must be 1 to ${MAX_NAME_LENGTH} characters`;
+  }
+
+  if (!isName(familyName)) {
+    return `Lead guest last name must be 1 to ${MAX_NAME_LENGTH} characters`;
+  }
+
+  if (!isEmailAddress(email)) {
+    return "Email is not valid";
+  }
+
+  if (!isMobileNumber(phoneNumber)) {
+    return "Phone number must be a valid mobile number with country code, like +919999999999";
+  }
+
+  if (!currency) {
+    return "Currency is required";
+  }
+
+  if (
+    typeof currency !== "string" ||
+    !(SUPPORTED_CURRENCIES as readonly string[]).includes(currency)
+  ) {
+    return `Currency must be one of: ${SUPPORTED_CURRENCIES.join(", ")}`;
   }
 
   return null;

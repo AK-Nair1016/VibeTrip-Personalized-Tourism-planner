@@ -1,4 +1,7 @@
 import { Schema, model } from "mongoose";
+import { PROPERTY_TYPES } from "../config/constants";
+
+export const HOTEL_SOURCES = ["seeded", "duffel"] as const;
 
 const hotelSchema = new Schema(
   {
@@ -32,15 +35,22 @@ const hotelSchema = new Schema(
     },
     propertyType: {
       type: String,
-      enum: ["hotel", "resort", "apartment", "hostel"],
+      enum: PROPERTY_TYPES,
       required: true,
     },
     cancellationPolicy: { type: String, required: true },
-    source: { type: String, enum: ["seeded", "live-api"], default: "seeded" },
+    source: { type: String, enum: HOTEL_SOURCES, default: "seeded" },
   },
   { timestamps: true }
 );
 
 hotelSchema.index({ location: "2dsphere" });
+
+// The seed script upserts on { city, name }, so running it twice cannot duplicate a hotel.
+// Only seeded hotels are covered: Duffel hotels get their own key later.
+hotelSchema.index(
+  { city: 1, name: 1 },
+  { unique: true, partialFilterExpression: { source: "seeded" } }
+);
 
 export const Hotel = model("Hotel", hotelSchema);

@@ -2,7 +2,10 @@ import type { Request, Response } from "express";
 
 import {
    getCurrentUser,
-    updateUserProfile
+    updateUserProfile,
+    getWishlist as getWishlistService,
+    addToWishlist as addToWishlistService,
+    removeFromWishlist as removeFromWishlistService,
   } from "../services/userService";
 
 import { catchAsync } from "../utils/catchAsync";
@@ -51,3 +54,55 @@ export const updateProfile = catchAsync(
     });
   }
 );
+
+export const getWishlist = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const hotels = await getWishlistService(userId);
+
+  res.status(200).json({
+    success: true,
+    message: "Wishlist fetched",
+    data: hotels,
+  });
+});
+
+export const addToWishlist = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const { hotelId } = req.body;
+
+  const hotels = await addToWishlistService(userId, hotelId);
+
+  res.status(200).json({
+    success: true,
+    message: "Hotel saved to your wishlist",
+    data: hotels,
+  });
+});
+
+export const removeFromWishlist = catchAsync(async (req: Request, res: Response) => {
+  const userId = req.authUser?.userId;
+
+  if (!userId) {
+    throw new Error("Authenticated user ID is missing");
+  }
+
+  const hotelId = req.params.hotelId as string;
+
+  const hotels = await removeFromWishlistService(userId, hotelId);
+
+  res.status(200).json({
+    success: true,
+    message: "Hotel removed from your wishlist",
+    data: hotels,
+  });
+});

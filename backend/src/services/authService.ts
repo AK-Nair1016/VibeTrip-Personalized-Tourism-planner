@@ -3,6 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 
 import { AppError } from "../utils/AppError";
+import { isDuplicateKeyError } from "../utils/dbErrors";
 
 import {
   signAccessToken,
@@ -31,8 +32,10 @@ export const findUserById = async (id: string) => {
   return User.findById(id);
 };
 
-// TODO: Replace `any` with a proper Mongoose User document type.
-const sanitizeUser = (user: any) => {
+// A User as loaded from MongoDB (the document, with methods like toObject)
+export type UserDocument = InstanceType<typeof User>;
+
+export const sanitizeUser = (user: UserDocument) => {
   const userObject = user.toObject();
 
   delete userObject.passwordHash;
@@ -41,8 +44,7 @@ const sanitizeUser = (user: any) => {
   return userObject;
 };
 
-// TODO: Replace `any` with a proper Mongoose User document type.
-const generateAuthTokens = (user: any) => {
+const generateAuthTokens = (user: UserDocument) => {
   const payload: TokenPayload = {
     userId: user._id.toString(),
     role: user.role
@@ -59,7 +61,20 @@ const generateAuthTokens = (user: any) => {
 };
 
 export const refreshAccessToken=(refreshToken:string)=>{
-  const payload =verifyRefreshToken(refreshToken);
+  let payload: TokenPayload;
+
+  // jwt.verify throws for a forged, malformed or expired token. That is the client's
+  // problem (401), not a server error, so it must not reach the error handler as a plain Error.
+  try {
+    payload = verifyRefreshToken(refreshToken);
+  } catch (error) {
+    throw new AppError(
+      "INVALID_REFRESH_TOKEN",
+      "Refresh token is invalid or expired, please log in again",
+      401
+    );
+  }
+
   const accessToken = signAccessToken({
     userId: payload.userId,
     role: payload.role
@@ -67,8 +82,7 @@ export const refreshAccessToken=(refreshToken:string)=>{
   return accessToken
 }
 
-export const googleLogin = async (user: any) => {
-  // TODO: Replace `any` with a proper Mongoose User document type.
+export const googleLogin = async (user: UserDocument) => {
   const tokens = generateAuthTokens(user);
 
   return {
@@ -90,14 +104,50 @@ export const signup = async (data: SignupData) => {
     );
   }
 
+  const existingUserName = await User.findOne({ userName });
+
+  if (existingUserName) {
+    throw new AppError(
+      "USERNAME_TAKEN",
+      "This username is already taken",
+      409
+    );
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const user = await User.create({
-    userName,
-    name,
-    email,
-    passwordHash
-  });
+  let user: UserDocument;
+
+  try {
+    user = await User.create({
+      userName,
+      name,
+      email,
+      passwordHash
+    });
+  } catch (error) {
+    // Two signups can pass the checks above together; the unique index then refuses the second.
+    // keyPattern names the field that clashed, so we can say which one it was.
+    if (isDuplicateKeyError(error)) {
+      const keyPattern = (error as { keyPattern?: Record<string, unknown> }).keyPattern;
+
+      if (keyPattern && keyPattern.email) {
+        throw new AppError(
+          "EMAIL_TAKEN",
+          "An account with this email already exists",
+          409
+        );
+      }
+
+      throw new AppError(
+        "USERNAME_TAKEN",
+        "This username is already taken",
+        409
+      );
+    }
+
+    throw error;
+  }
 
   await generateEmailVerificationToken(user._id.toString());
   

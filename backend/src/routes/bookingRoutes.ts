@@ -2,11 +2,18 @@ import { Router } from "express";
 import {
   getBookings,
   getBookingById,
+  getBookingStatus,
   createCancellationQuote,
   cancelBooking,
   createFlightBooking,
+  createHotelBooking,
+  createHotelCardSetup,
 } from "../controllers/bookingController";
-import { validateFlightBooking, validateBookingId } from "../validators/bookingValidators";
+import {
+  validateFlightBooking,
+  validateHotelBooking,
+  validateBookingId,
+} from "../validators/bookingValidators";
 import { authGuard } from "../middleware/authGuard";
 import { validateRequest } from "../middleware/validateRequest";
 
@@ -19,6 +26,13 @@ router.get(
   authGuard,
   validateRequest(validateBookingId, "params"),
   getBookingById
+);
+
+router.get(
+  "/:id/status",
+  authGuard,
+  validateRequest(validateBookingId, "params"),
+  getBookingStatus
 );
 
 router.post(
@@ -40,6 +54,19 @@ router.post(
   authGuard,
   validateRequest(validateFlightBooking),
   createFlightBooking
+);
+
+router.post(
+  "/hotels/card-setup",
+  authGuard,
+  createHotelCardSetup
+);
+
+router.post(
+  "/hotels",
+  authGuard,
+  validateRequest(validateHotelBooking),
+  createHotelBooking
 );
 
 export default router;

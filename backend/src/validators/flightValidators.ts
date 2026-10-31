@@ -1,10 +1,12 @@
-import { CABIN_CLASSES, SUPPORTED_CURRENCIES } from "@vibetrip/shared-types";
 import { isCityCode } from "../config/cities";
+import { CABIN_CLASSES, SUPPORTED_CURRENCIES } from "../config/constants";
+import type { FlightSearchQuery } from "../services/duffelFlightService";
 
 const MAX_ADULTS = 9; // Duffel allows at most 9 passengers per search
 const MAX_CONNECTIONS = 2;
 
-export const isDateString = (value: unknown): boolean => {
+// "value is string" lets TypeScript treat the value as text after a successful check
+export const isDateString = (value: unknown): value is string => {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
@@ -18,8 +20,18 @@ export const isDateString = (value: unknown): boolean => {
   return date.toISOString().slice(0, 10) === value;
 };
 
-// Every query value arrives as a string (or is missing).
-export const validateFlightSearch = (query: any): string | null => {
+type FlightSearchBody = Partial<Record<keyof FlightSearchQuery, unknown>>;
+
+const isSupportedCurrency = (value: unknown): boolean =>
+  typeof value === "string" && (SUPPORTED_CURRENCIES as readonly string[]).includes(value);
+
+// Every query value arrives as a string (or is missing). Express can also give an array or an
+// object (?origin[]=DEL), so values are checked as unknown.
+export const validateFlightSearch = (query: unknown): string | null => {
+  if (!query || typeof query !== "object") {
+    return "Search details are required";
+  }
+
   const {
     origin,
     destination,
@@ -29,7 +41,7 @@ export const validateFlightSearch = (query: any): string | null => {
     cabinClass,
     maxConnections,
     currency,
-  } = query;
+  } = query as FlightSearchBody;
 
   if (!origin) {
     return "Origin is required";
@@ -95,11 +107,11 @@ export const validateFlightSearch = (query: any): string | null => {
     }
   }
 
-  if (cabinClass && !(CABIN_CLASSES as readonly string[]).includes(cabinClass)) {
+  if (cabinClass && !(typeof cabinClass === "string" && (CABIN_CLASSES as readonly string[]).includes(cabinClass))) {
     return `Cabin class must be one of: ${CABIN_CLASSES.join(", ")}`;
   }
 
-  if (currency && !(SUPPORTED_CURRENCIES as readonly string[]).includes(currency)) {
+  if (currency && !isSupportedCurrency(currency)) {
     return `Currency must be one of: ${SUPPORTED_CURRENCIES.join(", ")}`;
   }
 
@@ -107,24 +119,32 @@ export const validateFlightSearch = (query: any): string | null => {
 };
 
 // Duffel offer ids look like "off_0000AbCd..." (letters, digits, underscores).
-export const validateOfferId = (params: any): string | null => {
-  const { offerId } = params;
+export const validateOfferId = (params: unknown): string | null => {
+  if (!params || typeof params !== "object") {
+    return "Offer id is required";
+  }
+
+  const { offerId } = params as { offerId?: unknown };
 
   if (!offerId) {
     return "Offer id is required";
   }
 
-  if (!/^off_[A-Za-z0-9_]+$/.test(offerId)) {
+  if (typeof offerId !== "string" || !/^off_[A-Za-z0-9_]+$/.test(offerId)) {
     return "Offer id is not valid";
   }
 
   return null;
 };
 
-export const validateOfferQuery = (query: any): string | null => {
-  const { currency } = query;
+export const validateOfferQuery = (query: unknown): string | null => {
+  if (!query || typeof query !== "object") {
+    return null;
+  }
 
-  if (currency && !(SUPPORTED_CURRENCIES as readonly string[]).includes(currency)) {
+  const { currency } = query as { currency?: unknown };
+
+  if (currency && !isSupportedCurrency(currency)) {
     return `Currency must be one of: ${SUPPORTED_CURRENCIES.join(", ")}`;
   }
 

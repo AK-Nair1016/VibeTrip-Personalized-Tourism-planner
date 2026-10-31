@@ -9,7 +9,7 @@ frontend/.vite/
 
 shared-types/dist/
 backend/dist/
-settings.json
+.claude/settings.json
 .claude/settings.local.json
 
 # Working docs and AI guides stay local; a recruiter-facing report comes later
