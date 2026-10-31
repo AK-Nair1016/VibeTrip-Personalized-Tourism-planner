@@ -2,6 +2,7 @@ import type { HotelCard } from "@vibetrip/shared-types";
 import { Hotel } from "../models/Hotel";
 import { User } from "../models/User";
 import { AppError } from "../utils/AppError";
+import { orderBySavedIds } from "../utils/orderBySavedIds";
 import { sanitizeUser } from "./authService";
 import { toHotelCard } from "./hotelService";
 
@@ -60,18 +61,17 @@ export const getWishlist = async (userId: string): Promise<HotelCard[]> => {
     throw new AppError("USER_NOT_FOUND", "User not found", 404);
   }
 
-  const hotels = await Hotel.find({ _id: { $in: user.wishlist } }).lean();
+  // .lean() skips the schema default, so a user created before the wishlist field existed has none
+  const savedIds = user.wishlist ?? [];
 
-  // $in does not keep the saved order, so walk the saved ids from newest to oldest
+  const hotels = await Hotel.find({ _id: { $in: savedIds } }).lean();
+
+  // $in does not keep the saved order, so put the hotels back in it (newest first)
+  const orderedHotels = orderBySavedIds(savedIds, hotels);
+
   const cards: HotelCard[] = [];
-  for (let i = user.wishlist.length - 1; i >= 0; i--) {
-    const savedId = user.wishlist[i].toString();
-
-    for (const hotel of hotels) {
-      if (hotel._id.toString() === savedId) {
-        cards.push(toHotelCard(hotel));
-      }
-    }
+  for (const hotel of orderedHotels) {
+    cards.push(toHotelCard(hotel));
   }
 
   return cards;
@@ -89,11 +89,14 @@ export const addToWishlist = async (userId: string, hotelId: string): Promise<Ho
     throw new AppError("USER_NOT_FOUND", "User not found", 404);
   }
 
-  const alreadySaved = user.wishlist.some((savedId) => savedId.toString() === hotelId);
+  // Same reason as in getWishlist: an older user may have no wishlist field yet
+  const savedIds = user.wishlist ?? [];
+
+  const alreadySaved = savedIds.some((savedId) => savedId.toString() === hotelId);
 
   // Saving twice (a double click) is not an error: the list simply stays as it is
   if (!alreadySaved) {
-    if (user.wishlist.length >= MAX_WISHLIST) {
+    if (savedIds.length >= MAX_WISHLIST) {
       throw new AppError("WISHLIST_FULL", `You can save at most ${MAX_WISHLIST} hotels`, 409);
     }
 
