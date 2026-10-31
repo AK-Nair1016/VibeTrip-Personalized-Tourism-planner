@@ -3,6 +3,7 @@ import crypto from "crypto";
 import bcrypt from "bcrypt";
 
 import { AppError } from "../utils/AppError";
+import { isDuplicateKeyError } from "../utils/dbErrors";
 
 import {
   signAccessToken,
@@ -103,14 +104,50 @@ export const signup = async (data: SignupData) => {
     );
   }
 
+  const existingUserName = await User.findOne({ userName });
+
+  if (existingUserName) {
+    throw new AppError(
+      "USERNAME_TAKEN",
+      "This username is already taken",
+      409
+    );
+  }
+
   const passwordHash = await bcrypt.hash(password, 12);
 
-  const user = await User.create({
-    userName,
-    name,
-    email,
-    passwordHash
-  });
+  let user: UserDocument;
+
+  try {
+    user = await User.create({
+      userName,
+      name,
+      email,
+      passwordHash
+    });
+  } catch (error) {
+    // Two signups can pass the checks above together; the unique index then refuses the second.
+    // keyPattern names the field that clashed, so we can say which one it was.
+    if (isDuplicateKeyError(error)) {
+      const keyPattern = (error as { keyPattern?: Record<string, unknown> }).keyPattern;
+
+      if (keyPattern && keyPattern.email) {
+        throw new AppError(
+          "EMAIL_TAKEN",
+          "An account with this email already exists",
+          409
+        );
+      }
+
+      throw new AppError(
+        "USERNAME_TAKEN",
+        "This username is already taken",
+        409
+      );
+    }
+
+    throw error;
+  }
 
   await generateEmailVerificationToken(user._id.toString());
   

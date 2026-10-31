@@ -338,6 +338,26 @@ export interface GetBookingData {
   bookingId: string;
 }
 
+// The only fields a booking response may return (GET /bookings and GET /bookings/:id). A list we
+// choose is safer than "everything except the secrets": a field added to the model later stays
+// private until someone adds it here.
+const BOOKING_PUBLIC_FIELDS = [
+  "type",
+  "status",
+  "bookingReference",
+  "totalAmount",
+  "currency",
+  "snapshot",
+  "cancelledAt",
+  "cancellationFee",
+  "cancellationFeeStatus",
+  "refundAmount",
+  "refundCurrency",
+  "refundStatus",
+  "createdAt",
+  "updatedAt",
+].join(" ");
+
 // Decided 25 Oct: the list hides "failed" and "pending_payment" (abandoned checkouts are noise),
 // and it is not paginated.
 export const getUserBookings = async (data: GetUserBookingsData) => {
@@ -349,18 +369,25 @@ export const getUserBookings = async (data: GetUserBookingsData) => {
     userId,
     status: { $in: ["authorized", "confirmed", "cancelled"] },
   })
+    .select(BOOKING_PUBLIC_FIELDS)
     .sort({ createdAt: -1 })
     .lean();
 
   return bookings;
 };
 
+// The detail adds providerBookingId, read only for the live status call below and removed
+// before replying.
+const BOOKING_DETAIL_FIELDS = `${BOOKING_PUBLIC_FIELDS} providerBookingId`;
+
 export const getBookingById = async (data: GetBookingData) => {
   const { userId, bookingId } = data;
 
   // Query by BOTH ids: another user's booking then looks the same as a missing one,
-  // so booking ids cannot be guessed.
-  const booking = await Booking.findOne({ _id: bookingId, userId }).lean();
+  // so booking ids cannot be guessed. select() with a list returns only those fields (and _id).
+  const booking = await Booking.findOne({ _id: bookingId, userId })
+    .select(BOOKING_DETAIL_FIELDS)
+    .lean();
 
   if (!booking) {
     throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
@@ -378,7 +405,10 @@ export const getBookingById = async (data: GetBookingData) => {
     }
   }
 
-  return { ...booking, liveStatus };
+  // The Duffel order id is ours to keep, the traveller uses bookingReference
+  const { providerBookingId, ...publicFields } = booking;
+
+  return { ...publicFields, liveStatus };
 };
 
 // What the traveller is told for each status. The app, not the bank statement, is where they
@@ -567,8 +597,46 @@ export const cancelBooking = async (data: GetBookingData) => {
     throw new AppError("QUOTE_REQUIRED", "The cancellation quote expired, ask for a new one", 409);
   }
 
-  // If Duffel refuses, this throws and the booking stays "confirmed" with nothing refunded
-  await confirmDuffelCancellation(quote.quoteId);
+  // Keep a plain copy of the quote, so it can be put back if Duffel refuses
+  const quoteCopy = {
+    quoteId: quote.quoteId,
+    providerRefundAmount: quote.providerRefundAmount,
+    providerRefundCurrency: quote.providerRefundCurrency,
+    userRefundAmount: quote.userRefundAmount,
+    expiresAt: quote.expiresAt,
+  };
+
+  // Claim the cancel before calling Duffel. One atomic step: only a still-confirmed booking that
+  // holds this exact quote matches, and the update removes the quote. Two requests at the same
+  // moment both pass the checks above, but only one gets a document back here. The loser stops,
+  // so Duffel and Stripe are called once. The status stays "confirmed" until Duffel agrees, so a
+  // crash right after the claim leaves a booking that is still cancellable (ask for a new quote).
+  const claimed = await Booking.findOneAndUpdate(
+    {
+      _id: booking._id,
+      userId,
+      status: "confirmed",
+      "cancellationQuote.quoteId": quote.quoteId,
+    },
+    { $unset: { cancellationQuote: "" } }
+  );
+
+  if (!claimed) {
+    throw new AppError("NOT_CANCELLABLE", "This booking is already being cancelled or is cancelled", 409);
+  }
+
+  try {
+    await confirmDuffelCancellation(quote.quoteId);
+  } catch (error) {
+    // Duffel refused: nothing was cancelled or refunded. Put the quote back so the traveller can
+    // retry while it is valid, as before. If this restore fails they just ask for a new quote.
+    try {
+      await Booking.updateOne({ _id: booking._id, status: "confirmed" }, { cancellationQuote: quoteCopy });
+    } catch (restoreError) {
+      console.error(`Could not restore the cancellation quote for booking ${bookingId}`, restoreError);
+    }
+    throw error;
+  }
 
   // The flight is cancelled now. Save that BEFORE touching Stripe, so a crash or a Stripe
   // failure below still leaves a record of what is owed.

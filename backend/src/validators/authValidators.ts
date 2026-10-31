@@ -1,3 +1,5 @@
+import validator from "validator";
+
 type SignupBody = { userName?: unknown; name?: unknown; email?: unknown; password?: unknown };
 type LoginBody = { email?: unknown; password?: unknown };
 type ForgotPasswordBody = { email?: unknown };
@@ -43,6 +45,12 @@ export const validateSignup = (body: unknown): string | null => {
 
   if (name.length < 3 || name.length > 50) {
     return "Name must be between 3 and 50 characters";
+  }
+
+  // Same rule as the User model (validator.isEmail), checked here so a bad email
+  // gives a 422 instead of a database error that surfaces as a 500
+  if (!validator.isEmail(email)) {
+    return "Email address is not valid";
   }
 
   if (password.length < 8) {

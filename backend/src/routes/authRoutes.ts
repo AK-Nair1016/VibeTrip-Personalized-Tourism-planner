@@ -4,13 +4,10 @@ import {
   login,
   refresh,
   logout,
-  googleLogin,
   forgotPassword,
   resetPassword,
   verifyEmail,
 } from "../controllers/authController";
-import passport from "../config/passport"
-import { env } from "../config/env";
 import { validateSignup, validateLogin, validateForgetPassword, validateResetPassword} from "../validators/authValidators";
 import { validateRequest } from "../middleware/validateRequest";
 
@@ -27,24 +24,10 @@ router.post(
   validateRequest(validateLogin),
   login
 );
-router.get(
-  "/google",
-  passport.authenticate("google", {
-    scope: ["profile", "email"],
-    session: false,
-  })
-);
 
-router.get(
-  "/google/callback",
-  passport.authenticate("google", {
-    session: false,
-    // The user cancelled or Google refused: send the browser back to the frontend, not a JSON 401
-    failureRedirect: `${env.CLIENT_URL}/login?error=google_failed`,
-  }),
-  googleLogin
-);
-
+// Google login is Phase 2 (Aman, 2026-10-31): /google and /google/callback are not mounted.
+// To bring it back, re-add both routes and `app.use(passport.initialize())` in index.ts.
+// Do not ship it before the account-linking hole is closed (Project-Status, review log).
 
 router.post("/refresh",refresh);
 

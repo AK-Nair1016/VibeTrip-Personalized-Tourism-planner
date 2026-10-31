@@ -2,8 +2,9 @@ import type { HotelCard } from "@vibetrip/shared-types";
 import { Hotel } from "../models/Hotel";
 import { User } from "../models/User";
 import { AppError } from "../utils/AppError";
+import { isDuplicateKeyError } from "../utils/dbErrors";
 import { orderBySavedIds } from "../utils/orderBySavedIds";
-import { sanitizeUser } from "./authService";
+import { sanitizeUser, type UserDocument } from "./authService";
 import { toHotelCard } from "./hotelService";
 
 interface UpdateProfileData {
@@ -29,16 +30,47 @@ export const updateUserProfile = async (
   userId: string,
   data: UpdateProfileData
 ) => {
-  const user = await User.findByIdAndUpdate(
-    userId,
-    {
-      $set: data,
-    },
-    {
-      new: true,
-      runValidators: true,
+  // Keeping your own current username is fine, so the look-up skips this user
+  if (data.userName !== undefined) {
+    const usernameOwner = await User.findOne({
+      userName: data.userName,
+      _id: { $ne: userId },
+    });
+
+    if (usernameOwner) {
+      throw new AppError(
+        "USERNAME_TAKEN",
+        "This username is already taken",
+        409
+      );
     }
-  );
+  }
+
+  let user: UserDocument | null;
+
+  try {
+    user = await User.findByIdAndUpdate(
+      userId,
+      {
+        $set: data,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  } catch (error) {
+    // Someone else took the name between the look-up above and this update
+    if (isDuplicateKeyError(error)) {
+      throw new AppError(
+        "USERNAME_TAKEN",
+        "This username is already taken",
+        409
+      );
+    }
+
+    throw error;
+  }
 
   if (!user) {
     throw new AppError(

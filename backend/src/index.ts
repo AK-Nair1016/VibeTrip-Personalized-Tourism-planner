@@ -14,7 +14,6 @@ import destinationRoutes from "./routes/destinationRoutes";
 import hotelRoutes from "./routes/hotelRoutes";
 import reviewRoutes from "./routes/reviewRoutes";
 import { errorHandler } from "./middleware/errorHandler";
-import passport from "./config/passport";
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -26,7 +25,6 @@ app.use(cors({ origin: env.CLIENT_URL, credentials: true }));
 app.use("/api/payments/webhook", express.raw({ type: "application/json" }));
 app.use(express.json());
 app.use(cookieParser());
-app.use(passport.initialize());
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
