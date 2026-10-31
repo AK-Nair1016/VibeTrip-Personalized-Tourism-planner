@@ -2,13 +2,20 @@ import { Router } from "express";
 
 import {
     getUserProfile,
-    updateProfile 
+    updateProfile,
+    getWishlist,
+    addToWishlist,
+    removeFromWishlist
 } from "../controllers/userController";
 
 import { authGuard } from "../middleware/authGuard";
 import { validateRequest } from "../middleware/validateRequest";
 
-import {validateUpdateProfile} from "../validators/userValidator"
+import {
+    validateUpdateProfile,
+    validateWishlistAdd,
+    validateWishlistHotelId
+} from "../validators/userValidator"
 
 const router = Router();
 
@@ -24,5 +31,20 @@ router.put(
   updateProfile
 );
 
+router.get("/me/wishlist", authGuard, getWishlist);
+
+router.post(
+  "/me/wishlist",
+  authGuard,
+  validateRequest(validateWishlistAdd),
+  addToWishlist
+);
+
+router.delete(
+  "/me/wishlist/:hotelId",
+  authGuard,
+  validateRequest(validateWishlistHotelId, "params"),
+  removeFromWishlist
+);
 
 export default router;

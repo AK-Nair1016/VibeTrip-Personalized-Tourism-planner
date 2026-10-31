@@ -99,6 +99,103 @@ export const cancelPaymentIntent = async (paymentIntentId: string): Promise<Stri
   }
 };
 
+interface StripeCustomerData {
+  userId: string;
+  email: string;
+  name: string;
+}
+
+// One Stripe customer per user, so a saved card has an owner
+export const createStripeCustomer = async (data: StripeCustomerData): Promise<string> => {
+  const { userId, email, name } = data;
+
+  try {
+    const customer = await stripe.customers.create(
+      { email, name, metadata: { userId } },
+      // A retried call cannot create a second customer for the same user
+      { idempotencyKey: `customer-${userId}` }
+    );
+    return customer.id;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    console.error(`Stripe error creating customer for user ${userId}: ${reason}`);
+    throw new AppError("PROVIDER_ERROR", "The payment provider could not create your account", 502);
+  }
+};
+
+interface CardSetupData {
+  customerId: string;
+  userId: string;
+}
+
+// Saves a card without charging it. The card is used later, off session, only for a late cancel fee.
+export const createCardSetupIntent = async (data: CardSetupData) => {
+  const { customerId, userId } = data;
+
+  let intent: Stripe.SetupIntent;
+  try {
+    intent = await stripe.setupIntents.create({
+      customer: customerId,
+      usage: "off_session",
+      payment_method_types: ["card"],
+      metadata: { userId },
+    });
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    console.error(`Stripe error creating SetupIntent: ${reason}`);
+    throw new AppError("PROVIDER_ERROR", "The payment provider could not start the card setup", 502);
+  }
+
+  if (!intent.client_secret) {
+    throw new AppError("PROVIDER_ERROR", "The payment provider did not return a setup secret", 502);
+  }
+
+  return { setupIntentId: intent.id, clientSecret: intent.client_secret };
+};
+
+export const getSetupIntent = async (setupIntentId: string): Promise<Stripe.SetupIntent> => {
+  try {
+    return await stripe.setupIntents.retrieve(setupIntentId);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    console.error(`Stripe error retrieving ${setupIntentId}: ${reason}`);
+    throw new AppError("PROVIDER_ERROR", "The payment provider could not load the saved card", 502);
+  }
+};
+
+interface SavedCardCharge {
+  customerId: string;
+  paymentMethodId: string;
+  amount: number;
+  currency: CurrencyCode;
+  bookingId: string;
+}
+
+// Charges the saved card with the guest absent (off_session), for a late cancel fee.
+export const chargeSavedCard = async (data: SavedCardCharge): Promise<Stripe.PaymentIntent> => {
+  const { customerId, paymentMethodId, amount, currency, bookingId } = data;
+
+  try {
+    return await stripe.paymentIntents.create(
+      {
+        amount: toMinorUnits(amount, currency),
+        currency: currency.toLowerCase(),
+        customer: customerId,
+        payment_method: paymentMethodId,
+        off_session: true,
+        confirm: true,
+        metadata: { bookingId },
+      },
+      // A retried call cannot charge the same booking's fee twice
+      { idempotencyKey: `late-fee-${bookingId}` }
+    );
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "unknown error";
+    console.error(`Stripe error charging the late fee for booking ${bookingId}: ${reason}`);
+    throw new AppError("PROVIDER_ERROR", "The payment provider could not charge the saved card", 502);
+  }
+};
+
 interface RefundData {
   paymentIntentId: string;
   amount: number;

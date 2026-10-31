@@ -16,6 +16,7 @@ const LIVE_STATUSES: readonly string[] = ["pending_payment", "authorized", "conf
 export const BOOKING_TYPES = ["flight", "hotel"] as const;
 export const BOOKING_PROVIDERS = ["duffel", "seeded"] as const;
 export const REFUND_STATUSES = ["pending", "succeeded", "failed"] as const;
+export const FEE_STATUSES = ["pending", "succeeded", "failed"] as const;
 
 const bookingSchema = new Schema(
   {
@@ -33,6 +34,9 @@ const bookingSchema = new Schema(
     fxRateAt: { type: Date, required: true },
 
     stripePaymentIntentId: { type: String },
+    // Hotel card guarantee; select false so GET /bookings never returns them
+    stripeCustomerId: { type: String, select: false },
+    stripePaymentMethodId: { type: String, select: false },
 
     provider: { type: String, enum: BOOKING_PROVIDERS, required: true },
     providerBookingId: { type: String },
@@ -60,6 +64,10 @@ const bookingSchema = new Schema(
     },
 
     cancelledAt: { type: Date },
+    // Late fee a guest owes the hotel, in the booking currency; hotels only
+    cancellationFee: { type: Number, min: 0 },
+    // "failed" means the saved card could not be charged
+    cancellationFeeStatus: { type: String, enum: FEE_STATUSES },
     refundAmount: { type: Number, min: 0 },
     refundCurrency: { type: String, enum: SUPPORTED_CURRENCIES },
     // "failed" means Duffel cancelled but Stripe did not refund: it needs a manual or retried refund
@@ -84,4 +92,11 @@ bookingSchema.index(
   { userId: 1, dedupeKey: 1 },
   { unique: true, partialFilterExpression: { isLive: true, dedupeKey: { $type: "string" } } }
 );
+
+// Serves the availability count: "which live bookings hold this room?". Only hotel bookings are in it.
+bookingSchema.index(
+  { "snapshot.roomId": 1 },
+  { partialFilterExpression: { type: "hotel", isLive: true } }
+);
+
 export const Booking = model("Booking", bookingSchema);

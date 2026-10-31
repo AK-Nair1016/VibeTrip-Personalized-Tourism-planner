@@ -10,6 +10,9 @@ import authRoutes from "./routes/authRoutes";
 import userRoutes from "./routes/userRoutes";
 import flightRoutes from "./routes/flightRoutes";
 import paymentRoutes from "./routes/paymentRoutes";
+import destinationRoutes from "./routes/destinationRoutes";
+import hotelRoutes from "./routes/hotelRoutes";
+import reviewRoutes from "./routes/reviewRoutes";
 import { errorHandler } from "./middleware/errorHandler";
 import passport from "./config/passport";
 
@@ -32,6 +35,9 @@ app.get("/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/flights", flightRoutes);
+app.use("/api/destinations", destinationRoutes);
+app.use("/api/hotels", hotelRoutes);
+app.use("/api/reviews", reviewRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/payments", paymentRoutes);
 

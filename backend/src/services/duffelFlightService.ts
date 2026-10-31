@@ -45,7 +45,7 @@ export const DEFAULT_CURRENCY: CurrencyCode = "INR";
 const DEFAULT_CABIN_CLASS: CabinClass = "economy";
 const DEFAULT_MAX_CONNECTIONS = 1;
 
-// Turns the URL values into typed search params and fills in the defaults (decision 2 in DECISIONS.md)
+// Turns the URL values into typed search params and fills in the defaults (decision 2 in CROSS-FEATURE-DECISIONS.md)
 const toSearchParams = (query: FlightSearchQuery): FlightSearchParams => {
   let cabinClass: CabinClass = DEFAULT_CABIN_CLASS;
   if (query.cabinClass) {

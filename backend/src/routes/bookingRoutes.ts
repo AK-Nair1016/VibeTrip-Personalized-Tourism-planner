@@ -6,8 +6,14 @@ import {
   createCancellationQuote,
   cancelBooking,
   createFlightBooking,
+  createHotelBooking,
+  createHotelCardSetup,
 } from "../controllers/bookingController";
-import { validateFlightBooking, validateBookingId } from "../validators/bookingValidators";
+import {
+  validateFlightBooking,
+  validateHotelBooking,
+  validateBookingId,
+} from "../validators/bookingValidators";
 import { authGuard } from "../middleware/authGuard";
 import { validateRequest } from "../middleware/validateRequest";
 
@@ -48,6 +54,19 @@ router.post(
   authGuard,
   validateRequest(validateFlightBooking),
   createFlightBooking
+);
+
+router.post(
+  "/hotels/card-setup",
+  authGuard,
+  createHotelCardSetup
+);
+
+router.post(
+  "/hotels",
+  authGuard,
+  validateRequest(validateHotelBooking),
+  createHotelBooking
 );
 
 export default router;

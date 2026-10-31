@@ -125,6 +125,16 @@ const userSchema = new mongoose.Schema(
       type: String,
       select: false,
     },
+
+    // Saved hotels (hotels only, decided in the PRD). Capped so the array cannot grow without limit.
+    wishlist: {
+      type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Hotel" }],
+      default: [],
+      validate: {
+        validator: (arr: unknown[]) => arr.length <= 100,
+        message: "Cannot save more than 100 hotels",
+      },
+    },
   },
   {
     timestamps: true,

@@ -5,8 +5,11 @@ import type {
   Money,
   OrderPassenger,
   PassengerInput,
+  HotelBookingSnapshot,
 } from "@vibetrip/shared-types";
 import { AppError } from "../utils/AppError";
+import { isDuplicateKeyError } from "../utils/dbErrors";
+import { countNights, freeCancelUntil } from "../utils/stayDates";
 import {
   getOfferForCheckout,
   getDuffelOrderStatus,
@@ -15,11 +18,21 @@ import {
   type FlightLiveStatus,
 } from "./duffelFlightService";
 import { Booking } from "../models/Booking";
-import { roundForCurrency } from "./fxService";
+import { Hotel } from "../models/Hotel";
+import { Room } from "../models/Room";
+import { User } from "../models/User";
+import { HOTEL_LIMITS, PAYMENT_WINDOW_MS, SEEDED_FREE_CANCEL_HOURS } from "../config/constants";
+import { getRoomsLeft } from "./availabilityService";
+import { convert, roundForCurrency } from "./fxService";
+import { guestsPerRoom } from "./hotelService";
 import {
   cancelPaymentIntent,
+  chargeSavedCard,
+  createCardSetupIntent,
   createFlightPaymentIntent,
+  createStripeCustomer,
   getPaymentIntentClientSecret,
+  getSetupIntent,
   refundPaymentIntent,
 } from "./stripeService";
 
@@ -72,11 +85,6 @@ const hashFlightRequest = (
     .createHash("sha256")
     .update(JSON.stringify({ offerId, currency, rows }))
     .digest("hex");
-};
-
-// 11000 is MongoDB's "duplicate key" error: a unique index refused the insert
-const isDuplicateKeyError = (error: unknown): boolean => {
-  return typeof error === "object" && error !== null && (error as { code?: unknown }).code === 11000;
 };
 
 type ExistingBooking = InstanceType<typeof Booking>;
@@ -148,9 +156,6 @@ interface ExistingCheckoutLookup {
   dedupeKey: string;
   requestHash: string;
 }
-
-// How long a traveller has to pay. After this an unpaid booking is let go, so the fare is free again.
-const PAYMENT_WINDOW_MS = 15 * 60 * 1000;
 
 // Looks for a booking that already answers this checkout. Returns its answer, returns null
 // when the caller should go on and create a new booking, or throws when the request is refused.
@@ -421,6 +426,10 @@ export const createCancellationQuote = async (data: GetBookingData) => {
     throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
   }
 
+  if (booking.type === "hotel") {
+    throw new AppError("NOT_CANCELLABLE", "Hotel bookings are cancelled directly, no quote is needed", 409);
+  }
+
   if (booking.type !== "flight" || booking.status !== "confirmed" || !booking.providerBookingId) {
     throw new AppError("NOT_CANCELLABLE", "Only a confirmed flight booking can be cancelled", 409);
   }
@@ -456,14 +465,91 @@ export const createCancellationQuote = async (data: GetBookingData) => {
   };
 };
 
-// Step 2: confirm the saved quote with Duffel, then refund through Stripe.
+// No refund: nothing was paid at booking. A late fee is charged to the card saved at booking.
+const cancelHotelBooking = async (booking: ExistingBooking) => {
+  if (booking.status !== "confirmed") {
+    throw new AppError("NOT_CANCELLABLE", "Only a confirmed booking can be cancelled", 409);
+  }
+
+  const snapshot = booking.snapshot as HotelBookingSnapshot;
+
+  // Check-in counts from 00:00 UTC of the check-in day
+  if (Date.now() >= Date.parse(snapshot.checkIn)) {
+    throw new AppError("STAY_STARTED", "This stay has already started and cannot be cancelled online", 409);
+  }
+
+  const isLate = Date.now() >= Date.parse(snapshot.freeCancelUntil);
+  const cancellationFee = isLate ? snapshot.lateCancelFee.amount : 0;
+
+  // Atomic, so a double click cancels once. It skips the save hook, so isLive is set here.
+  const cancelled = await Booking.findOneAndUpdate(
+    { _id: booking._id, userId: booking.userId, status: "confirmed" },
+    {
+      status: "cancelled",
+      isLive: false,
+      cancelledAt: new Date(),
+      cancellationFee,
+      ...(cancellationFee > 0 ? { cancellationFeeStatus: "pending" } : {}),
+    },
+    { new: true }
+  );
+
+  if (!cancelled) {
+    throw new AppError("NOT_CANCELLABLE", "Only a confirmed booking can be cancelled", 409);
+  }
+
+  const bookingId = booking._id.toString();
+  const currency = snapshot.lateCancelFee.currency;
+  let cancellationFeeStatus: "succeeded" | "failed" | null = null;
+
+  if (cancellationFee > 0) {
+    cancellationFeeStatus = "failed";
+
+    // The cancellation stands even if the card cannot be charged; the failed status is the record
+    try {
+      if (booking.stripeCustomerId && booking.stripePaymentMethodId) {
+        const payment = await chargeSavedCard({
+          customerId: booking.stripeCustomerId,
+          paymentMethodId: booking.stripePaymentMethodId,
+          amount: cancellationFee,
+          currency: booking.currency as CurrencyCode,
+          bookingId,
+        });
+
+        if (payment.status === "succeeded") {
+          cancellationFeeStatus = "succeeded";
+        }
+      }
+    } catch (error) {
+      console.error(`Late fee charge failed for booking ${bookingId}: ${cancellationFee} ${currency}`, error);
+    }
+
+    // The card may already be charged, so a failed save is logged, not thrown
+    try {
+      await Booking.updateOne({ _id: booking._id }, { cancellationFeeStatus });
+    } catch (error) {
+      console.error(`Could not save fee status "${cancellationFeeStatus}" for booking ${bookingId}`, error);
+    }
+  }
+
+  return { bookingId, status: "cancelled", cancellationFee, currency, cancellationFeeStatus };
+};
+
+// Hotels cancel directly. Flights: confirm the saved quote with Duffel, then refund through Stripe.
 export const cancelBooking = async (data: GetBookingData) => {
   const { userId, bookingId } = data;
 
-  const booking = await Booking.findOne({ _id: bookingId, userId });
+  // The saved card ids are hidden by default; a hotel cancel needs them for the late fee
+  const booking = await Booking.findOne({ _id: bookingId, userId }).select(
+    "+stripeCustomerId +stripePaymentMethodId"
+  );
 
   if (!booking) {
     throw new AppError("BOOKING_NOT_FOUND", "Booking not found", 404);
+  }
+
+  if (booking.type === "hotel") {
+    return cancelHotelBooking(booking);
   }
 
   // A second call after a cancel lands here too, because the status is no longer "confirmed"
@@ -524,5 +610,199 @@ export const cancelBooking = async (data: GetBookingData) => {
     refundAmount,
     currency,
     refundStatus: booking.refundStatus,
+  };
+};
+
+export interface CreateHotelBookingData {
+  userId: string;
+  hotelId: string;
+  roomId: string;
+  setupIntentId: string;
+  checkIn: string;
+  checkOut: string;
+  rooms: number;
+  guests: number;
+  leadGuest: { givenName: string; familyName: string };
+  email: string;
+  phoneNumber: string;
+  currency: CurrencyCode;
+}
+
+export interface HotelCardSetupData {
+  userId: string;
+}
+
+// Step 1 of a hotel booking: save a card without charging it. Reuses the user's Stripe customer.
+export const createHotelCardSetup = async (data: HotelCardSetupData) => {
+  const { userId } = data;
+
+  const user = await User.findById(userId).select("+stripeCustomerId email name");
+  if (!user) {
+    throw new AppError("USER_NOT_FOUND", "User not found", 404);
+  }
+
+  let customerId = user.stripeCustomerId;
+
+  if (!customerId) {
+    customerId = await createStripeCustomer({ userId, email: user.email, name: user.name });
+    // updateOne, so no save hooks or validators run on the user
+    await User.updateOne({ _id: userId }, { stripeCustomerId: customerId });
+  }
+
+  const setup = await createCardSetupIntent({ customerId, userId });
+
+  return { setupIntentId: setup.setupIntentId, clientSecret: setup.clientSecret };
+};
+
+interface HotelBookingResult {
+  bookingId: string;
+  bookingReference: string;
+  status: string;
+  totalAmount: number;
+  currency: string;
+}
+
+// Hotels are paid at the property. A card saved with a SetupIntent guarantees the booking (nothing is
+// charged now), so the booking is confirmed straight away.
+export const createHotelBooking = async (data: CreateHotelBookingData): Promise<HotelBookingResult> => {
+  const { userId, hotelId, roomId, setupIntentId, checkIn, checkOut, leadGuest, email, phoneNumber, currency } =
+    data;
+
+  // The validator also accepts "2" as text; the availability sum needs real numbers
+  const rooms = Number(data.rooms);
+  const guests = Number(data.guests);
+
+  const nights = countNights(checkIn, checkOut);
+  const dedupeKey = `hotel:room:${roomId}:${checkIn}:${checkOut}`;
+
+  const existing = await Booking.findOne({ userId, dedupeKey, isLive: true });
+  if (existing) {
+    throw new AppError("BOOKING_EXISTS", "You already have a booking for this room and these dates", 409);
+  }
+
+  // Stays that already ended do not count towards the cap
+  const today = new Date().toISOString().slice(0, 10);
+  const upcomingCount = await Booking.countDocuments({
+    userId,
+    type: "hotel",
+    isLive: true,
+    "snapshot.checkOut": { $gt: today },
+  });
+  if (upcomingCount >= HOTEL_LIMITS.maxLiveBookings) {
+    throw new AppError(
+      "TOO_MANY_BOOKINGS",
+      `You can hold at most ${HOTEL_LIMITS.maxLiveBookings} upcoming hotel bookings, cancel one first`,
+      409
+    );
+  }
+
+  const hotel = await Hotel.findById(hotelId).lean();
+  if (!hotel) {
+    throw new AppError("HOTEL_NOT_FOUND", "Hotel not found", 404);
+  }
+
+  // Matching hotelId stops pairing one hotel with a room of another
+  const room = await Room.findOne({ _id: roomId, hotelId }).lean();
+  if (!room) {
+    throw new AppError("ROOM_NOT_FOUND", "Room not found", 404);
+  }
+
+  if (guestsPerRoom(guests, rooms) > room.maxGuests) {
+    throw new AppError("TOO_MANY_GUESTS", "This room cannot hold that many guests", 422);
+  }
+
+  const capacity = [{ roomId, totalRooms: room.totalRooms }];
+
+  const roomsLeftBefore = await getRoomsLeft(capacity, checkIn, checkOut);
+  if ((roomsLeftBefore.get(roomId) ?? 0) < rooms) {
+    throw new AppError("NO_AVAILABILITY", "Not enough rooms are free for these dates", 409);
+  }
+
+  const user = await User.findById(userId).select("+stripeCustomerId");
+  const intent = await getSetupIntent(setupIntentId);
+
+  const customerRef = intent.customer;
+  const intentCustomerId = typeof customerRef === "string" ? customerRef : customerRef?.id;
+  const methodRef = intent.payment_method;
+  const paymentMethodId = typeof methodRef === "string" ? methodRef : methodRef?.id;
+
+  // The customer match stops a user from passing someone else's setup id
+  if (
+    intent.status !== "succeeded" ||
+    !user?.stripeCustomerId ||
+    intentCustomerId !== user.stripeCustomerId ||
+    !paymentMethodId
+  ) {
+    throw new AppError("CARD_NOT_SAVED", "Save a card first, the card setup is not complete", 422);
+  }
+
+  // The price comes from the room, never from the client
+  const conversion = await convert(room.pricePerNight * nights * rooms, room.currency, currency);
+  const lateFee = await convert(room.pricePerNight * rooms, room.currency, currency);
+
+  const snapshot: HotelBookingSnapshot = {
+    hotelId,
+    hotelName: hotel.name,
+    city: hotel.city,
+    photo: hotel.photos[0] ?? "",
+    roomId,
+    roomType: room.type,
+    checkIn,
+    checkOut,
+    nights,
+    rooms,
+    guests,
+    leadGuest: { givenName: leadGuest.givenName, familyName: leadGuest.familyName },
+    email,
+    phoneNumber,
+    price: { amount: conversion.providerAmount, currency: conversion.providerCurrency },
+    freeCancelUntil: freeCancelUntil(checkIn, SEEDED_FREE_CANCEL_HOURS),
+    lateCancelFee: { amount: lateFee.amount, currency: lateFee.currency },
+  };
+
+  const bookingReference = `VT-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
+
+  let booking: ExistingBooking;
+  try {
+    booking = await Booking.create({
+      userId,
+      type: "hotel",
+      provider: "seeded",
+      status: "confirmed",
+      bookingReference,
+      totalAmount: conversion.amount,
+      currency: conversion.currency,
+      providerAmount: conversion.providerAmount,
+      providerCurrency: conversion.providerCurrency,
+      fxRate: conversion.rate,
+      fxRateAt: conversion.rateAt,
+      snapshot,
+      dedupeKey,
+      stripeCustomerId: user.stripeCustomerId,
+      stripePaymentMethodId: paymentMethodId,
+    });
+  } catch (error) {
+    // The unique index refused it: a double click got in first
+    if (isDuplicateKeyError(error)) {
+      throw new AppError("BOOKING_EXISTS", "You already have a booking for this room and these dates", 409);
+    }
+    throw error;
+  }
+
+  // Two travellers can pass the check above together. Our booking is saved now, so a negative
+  // count means we lost the race and must give the room back.
+  const roomsLeftAfter = await getRoomsLeft(capacity, checkIn, checkOut);
+  if ((roomsLeftAfter.get(roomId) ?? 0) < 0) {
+    booking.status = "failed";
+    await booking.save();
+    throw new AppError("NO_AVAILABILITY", "Not enough rooms are free for these dates", 409);
+  }
+
+  return {
+    bookingId: booking._id.toString(),
+    bookingReference,
+    status: booking.status,
+    totalAmount: conversion.amount,
+    currency: conversion.currency,
   };
 };

@@ -1,3 +1,5 @@
+import { isObjectId } from "./hotelValidators";
+
 type UpdateProfileBody = { userName?: unknown; name?: unknown; avatarUrl?: unknown };
 
 export const validateUpdateProfile =(body: unknown):string |null=>{
@@ -47,3 +49,41 @@ export const validateUpdateProfile =(body: unknown):string |null=>{
 
   return null;
 };  
+
+// POST /users/me/wishlist
+export const validateWishlistAdd = (body: unknown): string | null => {
+  if (!body || typeof body !== "object") {
+    return "Request body is required";
+  }
+
+  const { hotelId } = body as { hotelId?: unknown };
+
+  if (!hotelId) {
+    return "Hotel id is required";
+  }
+
+  if (!isObjectId(hotelId)) {
+    return "Hotel id is not valid";
+  }
+
+  return null;
+};
+
+// DELETE /users/me/wishlist/:hotelId, used with source "params"
+export const validateWishlistHotelId = (params: unknown): string | null => {
+  if (!params || typeof params !== "object") {
+    return "Hotel id is required";
+  }
+
+  const { hotelId } = params as { hotelId?: unknown };
+
+  if (!hotelId) {
+    return "Hotel id is required";
+  }
+
+  if (!isObjectId(hotelId)) {
+    return "Hotel id is not valid";
+  }
+
+  return null;
+};
