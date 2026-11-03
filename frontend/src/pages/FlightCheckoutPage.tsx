@@ -404,7 +404,7 @@ export default function FlightCheckoutPage() {
                     </>
                   ) : (
                     <>
-                      <span>Next: Payment</span>
+                      <span>Continue to payment</span>
                       <span className={`${styles.span6} material-symbols-outlined`}>arrow_forward</span>
                     </>
                   )}

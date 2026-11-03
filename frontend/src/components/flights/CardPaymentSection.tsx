@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { CardElement, Elements, useElements, useStripe } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
-import type { StripeCardElementOptions } from "@stripe/stripe-js";
+import { CARD_ELEMENT_OPTIONS, stripePromise } from "../../utils/stripeClient";
 
 interface CardPaymentSectionProps {
   clientSecret: string; // Stripe PaymentIntent secret from POST /bookings/flights
@@ -10,30 +9,8 @@ interface CardPaymentSectionProps {
   onError: (message: string) => void; // call with a message safe to show when the card is declined
 }
 
-// Only the public key (pk_test_...) belongs in the browser. The secret key stays on the server.
-const publishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
-
-// Created once at module level: calling loadStripe on every render would reload Stripe.js each time.
-// No key means no Stripe, so we skip the call instead of letting it throw.
-const stripePromise = publishableKey ? loadStripe(publishableKey) : null;
-
-// The card field lives in a Stripe iframe, which Tailwind classes cannot reach. Its look is set
-// here instead, as plain values.
-const CARD_ELEMENT_OPTIONS: StripeCardElementOptions = {
-  style: {
-    base: {
-      fontSize: "16px",
-      color: "#1b1b1f",
-      "::placeholder": { color: "#8b8b94" },
-    },
-    invalid: { color: "#ba1a1a" },
-  },
-};
-
-// The card area of the Pay step, and the Pay button.
-//
-// Step 1 of 3 (done): Elements wrapper. Step 2 (done): CardElement. Step 3: confirmCardPayment on the button.
-// The button stays disabled until step 3, so a payment can never look successful by accident.
+// The card area of the Pay step, and the Pay button. Stripe setup (key, card field style) is shared
+// in utils/stripeClient.ts.
 //
 // This outer component only provides Stripe to the form below. Stripe's hooks (useStripe,
 // useElements) only work inside <Elements>, so they cannot be used in this same component.
