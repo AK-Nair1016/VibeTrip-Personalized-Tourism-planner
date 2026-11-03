@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@react-oauth/google": "^0.12.2",
-    "@vitejs/plugin-react": "^5.0.0",
+    "@stripe/react-stripe-js": "^7.0.1",
+    "@stripe/stripe-js": "^10.2.1",
     "@vibetrip/shared-types": "*",
+    "@vitejs/plugin-react": "^5.0.0",
     "axios": "^1.11.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
