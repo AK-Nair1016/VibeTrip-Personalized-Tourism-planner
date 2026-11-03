@@ -10,6 +10,7 @@ import type {
 import { AppError } from "../utils/AppError";
 import { isDuplicateKeyError } from "../utils/dbErrors";
 import { countNights, freeCancelUntil } from "../utils/stayDates";
+import { withPublicSnapshot } from "../utils/publicSnapshot";
 import {
   getOfferForCheckout,
   getDuffelOrderStatus,
@@ -373,7 +374,8 @@ export const getUserBookings = async (data: GetUserBookingsData) => {
     .sort({ createdAt: -1 })
     .lean();
 
-  return bookings;
+  // The saved snapshot holds Duffel ids; the response gets a copy without them
+  return bookings.map((booking) => withPublicSnapshot(booking));
 };
 
 // The detail adds providerBookingId, read only for the live status call below and removed
@@ -408,7 +410,9 @@ export const getBookingById = async (data: GetBookingData) => {
   // The Duffel order id is ours to keep, the traveller uses bookingReference
   const { providerBookingId, ...publicFields } = booking;
 
-  return { ...publicFields, liveStatus };
+  // Cancel, quote and status read the top-level providerBookingId from the database, never from
+  // this response, so removing the ids from the snapshot copy here breaks nothing.
+  return { ...withPublicSnapshot(publicFields), liveStatus };
 };
 
 // What the traveller is told for each status. The app, not the bank statement, is where they
