@@ -1,0 +1,147 @@
+/* Styles for FlightResultsPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply flex items-center gap-3 rounded-xl bg-secondary-container/40 p-4 text-primary-container;
+}
+
+.span1 {
+  @apply animate-spin text-[22px];
+}
+
+.p1 {
+  @apply text-label-md;
+}
+
+.p2 {
+  @apply text-label-sm;
+}
+
+.div2 {
+  @apply mt-space-md flex flex-col gap-space-md;
+}
+
+.div3 {
+  @apply flex h-40 animate-pulse overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm;
+}
+
+.div4 {
+  @apply flex-1 space-y-4 p-5;
+}
+
+.div5 {
+  @apply h-4 w-1/3 rounded bg-surface-container;
+}
+
+.div6 {
+  @apply h-8 w-2/3 rounded bg-surface-container;
+}
+
+.div7 {
+  @apply h-4 w-1/2 rounded bg-surface-container;
+}
+
+.div8 {
+  @apply hidden w-[210px] bg-surface-container-low md:block;
+}
+
+.div9 {
+  @apply rounded-xl bg-surface-container-lowest p-space-xl text-center shadow-sm;
+}
+
+.span2 {
+  @apply text-[40px] text-outline;
+}
+
+.h21 {
+  @apply mt-space-sm text-title text-on-surface;
+}
+
+.p3 {
+  @apply mx-auto mt-space-xs max-w-md text-body-sm text-on-surface-variant;
+}
+
+.button1 {
+  @apply mt-space-md rounded-lg bg-primary-container px-6 py-2.5 text-label-md text-on-primary transition-colors hover:bg-primary;
+}
+
+.div10 {
+  @apply mx-auto w-full max-w-[1360px] px-margin-mobile py-space-lg md:px-margin;
+}
+
+.div11 {
+  @apply mt-space-lg;
+}
+
+.div12 {
+  @apply flex flex-col items-start gap-gutter lg:flex-row;
+}
+
+.section1 {
+  @apply w-full min-w-0 flex-1;
+}
+
+.div13 {
+  @apply flex flex-col justify-between gap-space-xs pb-space-sm sm:flex-row sm:items-baseline;
+}
+
+.h11 {
+  @apply text-headline-md tracking-tight text-on-surface;
+}
+
+.p4 {
+  @apply mt-0.5 text-body-sm text-outline;
+}
+
+.div14 {
+  @apply flex items-center gap-space-xs text-label-sm text-outline;
+}
+
+.span3 {
+  @apply text-[16px];
+}
+
+.div15 {
+  @apply mt-space-sm grid grid-cols-3 overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm;
+}
+
+.span4 {
+  @apply text-label-md;
+}
+
+.div16 {
+  @apply absolute bottom-0 left-0 right-0 h-[3px] bg-primary-container;
+}
+
+.p5 {
+  @apply mb-space-md mt-space-sm text-body-sm text-outline;
+}
+
+.div17 {
+  @apply flex flex-col gap-space-md;
+}
+
+.div18 {
+  @apply mb-space-xl mt-space-lg flex justify-center;
+}
+
+.button2 {
+  @apply rounded-xl bg-surface-container-high px-8 py-3 text-label-md text-on-surface shadow-sm transition-colors hover:bg-surface-container-highest;
+}
+
+/* Sort tabs: active and inactive looks, then the price line under each label */
+.sortTabOn {
+  @apply relative flex flex-col items-center justify-center px-space-sm py-3 transition-colors bg-secondary-fixed text-primary-container;
+}
+
+.sortTabOff {
+  @apply relative flex flex-col items-center justify-center px-space-sm py-3 transition-colors bg-surface-container-lowest text-on-surface hover:bg-surface-container-low;
+}
+
+.sortTabPriceOn {
+  @apply mt-0.5 text-label-sm;
+}
+
+.sortTabPriceOff {
+  @apply mt-0.5 text-label-sm text-outline;
+}

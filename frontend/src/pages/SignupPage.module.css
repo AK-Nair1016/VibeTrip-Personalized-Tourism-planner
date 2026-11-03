@@ -1,0 +1,22 @@
+/* Styles for SignupPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.form1 {
+  @apply space-y-4;
+}
+
+.div1 {
+  @apply grid gap-4 sm:grid-cols-2;
+}
+
+.div2 {
+  @apply border-t border-outline-variant pt-4 text-center;
+}
+
+.p1 {
+  @apply font-label-md text-label-md font-normal text-on-surface-variant;
+}
+
+.link1 {
+  @apply font-bold text-primary-container underline hover:text-primary;
+}

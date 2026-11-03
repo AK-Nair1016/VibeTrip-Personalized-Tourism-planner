@@ -1,0 +1,99 @@
+/* Styles for HotelResultsPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply mx-auto w-full max-w-[1440px] px-margin-mobile py-space-lg md:px-margin;
+}
+
+.div2 {
+  @apply mb-space-lg;
+}
+
+.div3 {
+  @apply grid grid-cols-1 items-start gap-gutter lg:grid-cols-12;
+}
+
+.aside1 {
+  @apply w-full lg:col-span-3;
+}
+
+.section1 {
+  @apply flex w-full flex-col gap-space-md lg:col-span-9;
+}
+
+.header1 {
+  @apply pb-space-xs;
+}
+
+.h11 {
+  @apply font-headline-md text-headline-md font-extrabold tracking-tight text-on-surface;
+}
+
+.p1 {
+  @apply mt-0.5 font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.div4 {
+  @apply flex items-center justify-between gap-space-md rounded-xl bg-error-container px-space-md py-3 font-body-sm text-body-sm text-on-error-container;
+}
+
+.button1 {
+  @apply font-label-md text-label-md underline;
+}
+
+.div5 {
+  @apply flex flex-col gap-space-md;
+}
+
+.div6 {
+  @apply h-52 animate-pulse rounded-2xl bg-surface-container-high;
+}
+
+.div7 {
+  @apply rounded-2xl border border-outline-variant px-6 py-12 text-center;
+}
+
+.span1 {
+  @apply mb-3 text-[44px] text-outline;
+}
+
+.p2 {
+  @apply mb-6 font-body-default text-body-default text-on-surface;
+}
+
+.button2 {
+  @apply rounded-[12px] bg-primary-container px-6 py-2.5 font-label-md text-label-md font-semibold text-on-primary hover:bg-primary;
+}
+
+.div8 {
+  @apply flex flex-col items-center rounded-2xl border border-dashed border-outline-variant px-6 py-16 text-center;
+}
+
+.h21 {
+  @apply mb-2 font-headline-sm text-headline-sm text-on-surface;
+}
+
+.p3 {
+  @apply mb-6 max-w-md font-body-default text-body-default text-on-surface-variant;
+}
+
+.p4 {
+  @apply max-w-md font-body-default text-body-default text-on-surface-variant;
+}
+
+.div9 {
+  @apply mx-auto w-full max-w-5xl px-margin-mobile py-space-xl text-center md:px-margin;
+}
+
+.h12 {
+  @apply mb-space-lg font-headline-md text-headline-md text-on-surface;
+}
+
+/* Dimmed while a new search runs, so the list does not jump around as the slider moves */
+.list {
+  @apply flex flex-col gap-space-md transition-opacity;
+}
+
+.listLoading {
+  @apply flex flex-col gap-space-md transition-opacity opacity-60;
+}

@@ -8,8 +8,11 @@ export interface ApiResponse<T> {
   data: T;
 }
 
+// Local development runs Vite on 5173 and the API on 5000. Production must set VITE_API_URL.
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE_URL,
   // Sends the refresh cookie to the backend (needed across Vercel and Render)
   withCredentials: true
 });
@@ -38,7 +41,19 @@ const NO_REFRESH_URLS = ["/auth/login", "/auth/signup", "/auth/refresh"];
 // When the access token has expired the backend answers 401. Get a new token from the refresh
 // cookie and retry the request once, so the user never notices.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Every real reply is a JSON object. A string usually means the API URL points to a frontend
+    // server, which answers unknown paths with index.html and a 200. Without this check, pages
+    // would read `.data.data` off a string and crash blank.
+    if (typeof response.data === "string" && response.data.length > 0) {
+      console.error(
+        "The API did not answer with JSON. Check that VITE_API_URL points to the backend (local default: http://localhost:5000/api), then restart `npm run dev`."
+      );
+      return Promise.reject(new Error("The server did not answer as expected."));
+    }
+
+    return response;
+  },
   async (error: AxiosError) => {
     const originalRequest = error.config as RetriableRequest | undefined;
     const status = error.response?.status;
@@ -57,7 +72,7 @@ api.interceptors.response.use(
     try {
       // Plain axios, not `api`: the refresh call must not pass through this interceptor
       const refreshResponse = await axios.post<ApiResponse<{ accessToken: string }>>(
-        `${import.meta.env.VITE_API_URL}/auth/refresh`,
+        `${API_BASE_URL}/auth/refresh`,
         null,
         { withCredentials: true }
       );

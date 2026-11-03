@@ -1,0 +1,75 @@
+/* Styles for BookingsPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply mx-auto w-full max-w-[1040px] px-margin-mobile py-space-xl md:px-space-md;
+}
+
+.h11 {
+  @apply font-headline-md text-headline-md text-on-surface;
+}
+
+.p1 {
+  @apply mt-space-xs font-body-default text-body-default text-on-surface-variant;
+}
+
+.div2 {
+  @apply mt-space-lg flex flex-wrap gap-space-sm;
+}
+
+.div3 {
+  @apply mt-space-lg space-y-space-md;
+}
+
+.p2 {
+  @apply rounded-2xl border border-outline-variant bg-surface-container-lowest p-space-lg text-on-surface-variant;
+}
+
+.div4 {
+  @apply rounded-2xl border border-error bg-error-container p-space-lg text-on-error-container;
+}
+
+.p3 {
+  @apply font-body-default text-body-default;
+}
+
+.button1 {
+  @apply mt-space-sm rounded-xl border border-error px-space-md py-2 font-label-md text-label-md hover:bg-surface-container-lowest;
+}
+
+.div5 {
+  @apply rounded-2xl border border-outline-variant bg-surface-container-lowest p-space-xl text-center;
+}
+
+.span1 {
+  @apply text-[40px] text-primary-container;
+}
+
+.h21 {
+  @apply mt-space-sm font-title text-title text-on-surface;
+}
+
+.p4 {
+  @apply mt-space-xs font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.div6 {
+  @apply mt-space-md flex flex-wrap justify-center gap-space-sm;
+}
+
+.link1 {
+  @apply rounded-xl bg-primary-container px-space-md py-2.5 font-label-md text-label-md text-on-primary hover:bg-primary;
+}
+
+.link2 {
+  @apply rounded-xl border border-outline-variant px-space-md py-2.5 font-label-md text-label-md text-on-surface hover:bg-surface-container-low;
+}
+
+/* The two tab looks: active, and the other tabs */
+.tabOn {
+  @apply rounded-full px-space-md py-2 font-label-md text-label-md bg-primary-container text-on-primary;
+}
+
+.tabOff {
+  @apply rounded-full px-space-md py-2 font-label-md text-label-md border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low;
+}

@@ -1,0 +1,159 @@
+/* Styles for FlightCheckoutPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.ol1 {
+  @apply mb-space-lg flex items-center;
+}
+
+.li1 {
+  @apply flex items-center gap-space-xs;
+}
+
+.span1 {
+  @apply flex h-7 w-7 items-center justify-center rounded-full bg-primary-container text-on-primary;
+}
+
+.span2 {
+  @apply text-[16px];
+}
+
+.span3 {
+  @apply flex h-7 w-7 items-center justify-center rounded-full bg-primary-container text-label-sm text-on-primary;
+}
+
+.li2 {
+  @apply mx-space-sm h-px w-10 bg-outline-variant sm:w-16;
+}
+
+.div1 {
+  @apply mx-auto flex w-full max-w-6xl items-center justify-center gap-3 px-6 py-space-xl text-on-surface-variant;
+}
+
+.span4 {
+  @apply animate-spin text-[24px];
+}
+
+.p1 {
+  @apply text-body-sm;
+}
+
+.div2 {
+  @apply mx-auto w-full max-w-xl px-6 py-space-xl;
+}
+
+.div3 {
+  @apply rounded-xl bg-surface-container-lowest p-space-xl text-center shadow-sm;
+}
+
+.span5 {
+  @apply text-[40px] text-outline;
+}
+
+.h11 {
+  @apply mt-space-sm text-title text-on-surface;
+}
+
+.p2 {
+  @apply mt-space-xs text-body-sm text-on-surface-variant;
+}
+
+.div4 {
+  @apply mt-space-md flex justify-center gap-space-sm;
+}
+
+.button1 {
+  @apply rounded-lg bg-primary-container px-6 py-2.5 text-label-md text-on-primary hover:bg-primary;
+}
+
+.link1 {
+  @apply rounded-lg border border-outline-variant px-6 py-2.5 text-label-md text-on-surface hover:bg-surface-container-low;
+}
+
+.div5 {
+  @apply mx-auto w-full max-w-6xl px-6 py-8;
+}
+
+.div6 {
+  @apply flex flex-col items-start gap-8 lg:flex-row;
+}
+
+.div7 {
+  @apply min-w-0 w-full flex-1;
+}
+
+.div8 {
+  @apply mb-5 mt-6;
+}
+
+.h12 {
+  @apply text-headline-md tracking-tight text-on-surface;
+}
+
+.p3 {
+  @apply mt-1 text-body-sm text-on-surface-variant;
+}
+
+.div9 {
+  @apply mb-space-md rounded-xl bg-error-container p-4 text-on-error-container;
+}
+
+.p4 {
+  @apply text-label-md;
+}
+
+.link2 {
+  @apply mt-1 inline-block text-label-md underline;
+}
+
+.div10 {
+  @apply flex items-center justify-between pb-12 pt-2;
+}
+
+.link3 {
+  @apply inline-flex items-center gap-1.5 text-body-sm text-on-surface underline hover:text-primary;
+}
+
+.span6 {
+  @apply text-[18px];
+}
+
+.button2 {
+  @apply flex items-center gap-2 rounded-xl bg-primary-container px-8 py-3.5 text-body-default font-bold text-on-primary shadow-sm transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+.span7 {
+  @apply animate-spin text-[18px];
+}
+
+.div11 {
+  @apply mb-space-md rounded-xl bg-surface-container-lowest p-4 shadow-sm;
+}
+
+.p5 {
+  @apply mb-1 text-label-sm text-outline;
+}
+
+.p6 {
+  @apply text-body-sm text-on-surface;
+}
+
+.p7 {
+  @apply pb-12 pt-space-md text-label-sm text-on-surface-variant;
+}
+
+/* Stepper: "On" is the current or finished look, "Off" is the step still to come */
+.stepLabelOn {
+  @apply text-label-md text-on-surface;
+}
+
+.stepLabelOff {
+  @apply text-label-md text-on-surface-variant;
+}
+
+.stepDotOn {
+  @apply flex h-7 w-7 items-center justify-center rounded-full text-label-sm bg-primary-container text-on-primary;
+}
+
+.stepDotOff {
+  @apply flex h-7 w-7 items-center justify-center rounded-full text-label-sm border border-outline-variant bg-surface-container-lowest text-on-surface-variant;
+}

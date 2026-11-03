@@ -1,0 +1,203 @@
+/* Styles for HotelDetailPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply mx-auto w-full max-w-[1280px] px-margin-mobile py-space-md md:px-gutter lg:px-margin;
+}
+
+.div2 {
+  @apply mb-space-md h-10 w-1/2 animate-pulse rounded bg-surface-container-high;
+}
+
+.div3 {
+  @apply h-[340px] animate-pulse rounded-[18px] bg-surface-container-high lg:h-[520px];
+}
+
+.div4 {
+  @apply mx-auto w-full max-w-xl px-margin-mobile py-space-xl text-center;
+}
+
+.span1 {
+  @apply mb-3 text-[44px] text-outline;
+}
+
+.p1 {
+  @apply mb-6 font-body-default text-body-default text-on-surface;
+}
+
+.div5 {
+  @apply flex justify-center gap-space-md;
+}
+
+.button1 {
+  @apply rounded-[12px] bg-primary-container px-6 py-2.5 font-label-md text-label-md font-semibold text-on-primary hover:bg-primary;
+}
+
+.link1 {
+  @apply rounded-[12px] border border-outline-variant px-6 py-2.5 font-label-md text-label-md font-semibold text-on-surface hover:bg-surface-container-low;
+}
+
+.nav1 {
+  @apply mb-space-sm;
+}
+
+.ol1 {
+  @apply flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant;
+}
+
+.link2 {
+  @apply transition-colors hover:text-primary-container;
+}
+
+.li1 {
+  @apply font-body-sm text-outline-variant;
+}
+
+.li2 {
+  @apply font-title text-on-surface;
+}
+
+.div6 {
+  @apply mb-space-md flex flex-col justify-between gap-space-sm md:flex-row md:items-end;
+}
+
+.div7 {
+  @apply flex flex-col gap-1;
+}
+
+.h11 {
+  @apply font-headline-md text-headline-md font-extrabold tracking-tight text-on-surface;
+}
+
+.div8 {
+  @apply flex flex-wrap items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.span2 {
+  @apply text-[13px] tracking-widest text-amber-600;
+}
+
+.span3 {
+  @apply text-outline;
+}
+
+.span4 {
+  @apply font-title text-on-surface;
+}
+
+.a1 {
+  @apply underline decoration-outline-variant underline-offset-2 hover:text-primary-container;
+}
+
+.button2 {
+  @apply inline-flex items-center gap-1.5 font-label-md text-label-md text-on-surface underline decoration-outline-variant underline-offset-4 transition-all hover:text-primary-container disabled:opacity-60;
+}
+
+.div9 {
+  @apply mb-space-md flex items-center justify-between gap-space-md rounded-xl bg-error-container px-space-md py-3 font-body-sm text-body-sm text-on-error-container;
+}
+
+.button3 {
+  @apply font-label-md text-label-md underline;
+}
+
+.div10 {
+  @apply mb-space-xl;
+}
+
+.div11 {
+  @apply grid grid-cols-1 items-start gap-gutter lg:grid-cols-12 lg:gap-space-xl;
+}
+
+.div12 {
+  @apply flex flex-col divide-y divide-outline-variant/60 lg:col-span-8;
+}
+
+.section1 {
+  @apply pb-space-lg;
+}
+
+.h21 {
+  @apply mb-space-sm font-title text-title text-on-surface;
+}
+
+.div13 {
+  @apply flex flex-wrap gap-2.5 pt-1;
+}
+
+.div14 {
+  @apply inline-flex items-center gap-2 rounded-full bg-surface-container-low px-3.5 py-2 font-label-md text-label-md text-on-surface;
+}
+
+.span5 {
+  @apply text-[19px] text-primary-container;
+}
+
+.section2 {
+  @apply flex items-center gap-space-md py-space-lg;
+}
+
+.div15 {
+  @apply flex h-12 w-12 shrink-0 items-center justify-center rounded-t-xl rounded-br-xl bg-[#134E4A] font-title text-title text-on-primary;
+}
+
+.div16 {
+  @apply flex flex-col;
+}
+
+.span6 {
+  @apply font-title text-title text-on-surface;
+}
+
+.span7 {
+  @apply font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.section3 {
+  @apply py-space-lg;
+}
+
+.h22 {
+  @apply mb-space-sm font-title text-title font-extrabold text-on-surface;
+}
+
+.p2 {
+  @apply font-body-default text-body-default leading-relaxed text-on-surface-variant;
+}
+
+.h23 {
+  @apply mb-space-md font-headline-sm text-headline-sm font-extrabold text-on-surface;
+}
+
+.section4 {
+  @apply py-space-md;
+}
+
+.details1 {
+  @apply cursor-pointer py-space-sm;
+}
+
+.summary1 {
+  @apply flex list-none items-center justify-between font-title text-title text-on-surface;
+}
+
+.span8 {
+  @apply text-on-surface-variant transition-transform group-open:rotate-180;
+}
+
+.div17 {
+  @apply pt-space-sm font-body-sm text-body-sm leading-relaxed text-on-surface-variant;
+}
+
+.aside1 {
+  @apply lg:sticky lg:top-24 lg:col-span-4;
+}
+
+/* Heart icon on the Save button: grey by default, rose when saved */
+.heartIcon {
+  @apply text-[19px];
+}
+
+.heartIconSaved {
+  @apply text-[19px] text-[#E11D48];
+}

@@ -1,0 +1,62 @@
+/* Styles for BookingDetailPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply mx-auto w-full max-w-[1040px] px-margin-mobile py-space-xl md:px-space-md;
+}
+
+.div2 {
+  @apply mb-space-lg;
+}
+
+.link1 {
+  @apply inline-flex items-center gap-space-xs font-label-md text-label-md text-on-surface-variant hover:text-on-surface;
+}
+
+.span1 {
+  @apply text-[18px];
+}
+
+.span2 {
+  @apply underline decoration-outline-variant underline-offset-4;
+}
+
+.p1 {
+  @apply rounded-2xl border border-outline-variant bg-surface-container-lowest p-space-lg text-on-surface-variant;
+}
+
+.div3 {
+  @apply rounded-2xl border border-error bg-error-container p-space-lg text-on-error-container;
+}
+
+.p2 {
+  @apply font-body-default text-body-default;
+}
+
+.button1 {
+  @apply mt-space-sm rounded-xl border border-error px-space-md py-2 font-label-md text-label-md hover:bg-surface-container-lowest;
+}
+
+.div4 {
+  @apply -mt-space-sm mb-space-lg;
+}
+
+.link2 {
+  @apply inline-flex rounded-xl bg-primary-container px-space-md py-2.5 font-label-md text-label-md font-semibold text-on-primary hover:bg-primary;
+}
+
+.div5 {
+  @apply grid grid-cols-1 items-start gap-space-lg lg:grid-cols-12;
+}
+
+.div6 {
+  @apply lg:col-span-8;
+}
+
+.div7 {
+  @apply lg:col-span-4;
+}
+
+.div8 {
+  @apply p-margin;
+}

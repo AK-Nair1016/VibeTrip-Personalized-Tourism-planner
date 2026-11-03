@@ -1,0 +1,58 @@
+/* Styles for ProfilePage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply mx-auto max-w-[640px] px-margin-mobile py-space-xl md:px-margin;
+}
+
+.p1 {
+  @apply font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.div2 {
+  @apply mx-auto max-w-[640px] space-y-4 px-margin-mobile py-space-xl md:px-margin;
+}
+
+.button1 {
+  @apply h-12 rounded-xl border border-on-surface px-6 font-label-md text-label-md text-on-surface hover:bg-surface-container-low;
+}
+
+.h11 {
+  @apply font-headline-md text-headline-md text-on-surface;
+}
+
+.div3 {
+  @apply mt-space-lg flex items-center gap-space-md rounded-xl border border-outline-variant bg-surface-container-lowest p-space-md;
+}
+
+.img1 {
+  @apply h-16 w-16 rounded-full object-cover;
+}
+
+.span1 {
+  @apply flex h-16 w-16 items-center justify-center rounded-full bg-primary font-headline-sm text-headline-sm text-on-primary;
+}
+
+.div4 {
+  @apply min-w-0;
+}
+
+.p2 {
+  @apply truncate font-title text-title text-on-surface;
+}
+
+.p3 {
+  @apply truncate font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.p4 {
+  @apply mt-1 flex items-center gap-2 font-label-sm text-label-sm text-on-surface-variant;
+}
+
+.span2 {
+  @apply text-[16px];
+}
+
+.form1 {
+  @apply mt-space-lg space-y-4;
+}

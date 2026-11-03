@@ -1,0 +1,138 @@
+/* Styles for WishlistPage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply mx-auto w-full max-w-[1280px] px-margin-mobile py-space-xl md:px-margin;
+}
+
+.div2 {
+  @apply mb-space-lg flex items-center gap-space-xs font-label-md text-label-md text-on-surface-variant;
+}
+
+.link1 {
+  @apply inline-flex items-center gap-1.5 transition-colors hover:text-primary-container;
+}
+
+.span1 {
+  @apply text-[18px];
+}
+
+.span2 {
+  @apply text-outline;
+}
+
+.span3 {
+  @apply font-medium text-on-surface;
+}
+
+.div3 {
+  @apply flex flex-col justify-between gap-space-md border-b border-outline-variant/60 pb-space-lg md:flex-row md:items-end;
+}
+
+.div4 {
+  @apply space-y-1;
+}
+
+.h11 {
+  @apply font-headline-lg text-headline-lg font-extrabold tracking-tight text-on-surface;
+}
+
+.p1 {
+  @apply font-body-default text-body-default text-on-surface-variant;
+}
+
+.div5 {
+  @apply flex items-baseline gap-1 font-body-sm text-body-sm text-on-surface-variant;
+}
+
+.span4 {
+  @apply font-title text-body-default font-extrabold text-on-surface;
+}
+
+.div6 {
+  @apply mt-space-md flex items-center justify-between gap-space-md rounded-xl bg-error-container px-space-md py-3 font-body-sm text-body-sm text-on-error-container;
+}
+
+.button1 {
+  @apply font-label-md text-label-md underline;
+}
+
+.div7 {
+  @apply mt-space-lg grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.div8 {
+  @apply animate-pulse;
+}
+
+.div9 {
+  @apply mb-3.5 aspect-square w-full rounded-2xl bg-surface-container-high;
+}
+
+.div10 {
+  @apply mb-2 h-5 w-2/3 rounded bg-surface-container-high;
+}
+
+.div11 {
+  @apply h-4 w-1/2 rounded bg-surface-container-high;
+}
+
+.div12 {
+  @apply mt-space-lg rounded-2xl border border-outline-variant px-6 py-12 text-center;
+}
+
+.span5 {
+  @apply mb-3 text-[44px] text-outline;
+}
+
+.p2 {
+  @apply mb-6 font-body-default text-body-default text-on-surface;
+}
+
+.button2 {
+  @apply rounded-[12px] bg-primary-container px-6 py-2.5 font-label-md text-label-md font-semibold text-on-primary hover:bg-primary;
+}
+
+.div13 {
+  @apply mt-space-lg flex flex-col items-center rounded-2xl border border-dashed border-outline-variant px-6 py-16 text-center;
+}
+
+.h21 {
+  @apply mb-2 font-headline-sm text-headline-sm text-on-surface;
+}
+
+.p3 {
+  @apply mb-6 max-w-md font-body-default text-body-default text-on-surface-variant;
+}
+
+.link2 {
+  @apply rounded-[12px] bg-primary-container px-6 py-2.5 font-label-md text-label-md font-semibold text-on-primary hover:bg-primary;
+}
+
+.div14 {
+  @apply flex items-center justify-end gap-space-xs py-space-lg font-label-md text-label-md text-on-surface-variant;
+}
+
+.select1 {
+  @apply cursor-pointer rounded-xl border border-outline-variant/80 bg-surface-container-lowest px-3 py-1.5 font-semibold text-on-surface focus:border-primary-container focus:outline-none;
+}
+
+.div15 {
+  @apply grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4;
+}
+
+.div16 {
+  @apply fixed bottom-6 right-6 z-50 flex items-center gap-space-sm rounded-xl border border-outline-variant/60 bg-surface-container-lowest px-space-md py-3 shadow-[0_6px_20px_rgba(0,0,0,0.10)];
+}
+
+.span6 {
+  @apply text-[20px] text-primary-container;
+}
+
+.span7 {
+  @apply font-body-sm text-body-sm font-medium text-on-surface;
+}
+
+.button3 {
+  @apply ml-space-sm font-label-sm text-label-sm font-bold text-primary-container hover:underline;
+}

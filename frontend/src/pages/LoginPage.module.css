@@ -1,0 +1,31 @@
+/* Styles for LoginPage only. Vite adds a unique suffix to every class name here, so these names
+   cannot clash with another page. @apply pulls in the same Tailwind utilities (and our theme
+   tokens from tailwind.config.js) that used to sit in className. */
+
+.form {
+  @apply space-y-5;
+}
+
+.forgotWrap {
+  @apply pt-1 text-center;
+}
+
+.forgotLink {
+  @apply font-label-md text-label-md text-on-surface underline hover:text-primary-container;
+}
+
+.divider {
+  @apply relative my-6 flex items-center justify-center;
+}
+
+.dividerLine {
+  @apply w-full border-t border-outline-variant;
+}
+
+.dividerText {
+  @apply absolute bg-surface px-3 font-label-sm text-label-sm text-on-surface-variant;
+}
+
+.signupLink {
+  @apply flex h-12 w-full items-center justify-center rounded-xl border border-on-surface font-label-md text-label-md text-on-surface transition-colors hover:bg-surface-container-low;
+}

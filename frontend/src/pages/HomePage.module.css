@@ -1,0 +1,66 @@
+/* Styles for HomePage only. Class names are local to this file (Vite adds a unique suffix),
+   and @apply copies the same Tailwind utilities that used to sit in className. */
+
+.div1 {
+  @apply flex w-full flex-col bg-surface text-on-surface;
+}
+
+.section1 {
+  @apply mx-auto flex w-full max-w-5xl flex-col items-center px-6 py-14 text-center;
+}
+
+.h11 {
+  @apply max-w-3xl font-display-hero-mobile text-display-hero-mobile tracking-tight md:font-display-hero md:text-display-hero;
+}
+
+.p1 {
+  @apply mt-3 max-w-2xl font-title text-title font-normal text-on-surface-variant;
+}
+
+.div2 {
+  @apply mt-8 w-full;
+}
+
+.section2 {
+  @apply mx-auto w-full max-w-[1440px] px-margin-mobile py-10 md:px-margin;
+}
+
+.h21 {
+  @apply mb-6 font-headline-md text-headline-md text-on-surface;
+}
+
+.div3 {
+  @apply grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5;
+}
+
+.div4 {
+  @apply flex animate-pulse flex-col;
+}
+
+.div5 {
+  @apply aspect-square w-full rounded-[16px] bg-surface-container-high;
+}
+
+.div6 {
+  @apply mt-3 h-5 w-2/3 rounded bg-surface-container-high;
+}
+
+.div7 {
+  @apply mt-2 h-4 w-full rounded bg-surface-container-high;
+}
+
+.div8 {
+  @apply rounded-2xl border border-outline-variant bg-surface-container-lowest p-8 text-center;
+}
+
+.p2 {
+  @apply font-body-default text-body-default text-on-surface;
+}
+
+.button1 {
+  @apply mt-4 rounded-xl bg-primary-container px-6 py-2.5 font-label-md text-label-md text-on-primary hover:bg-primary;
+}
+
+.p3 {
+  @apply rounded-2xl border border-dashed border-outline-variant p-8 text-center text-on-surface-variant;
+}

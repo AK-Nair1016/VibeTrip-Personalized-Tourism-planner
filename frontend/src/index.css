@@ -6,4 +6,16 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  @apply bg-surface font-sans text-on-surface antialiased;
+}
+
+/* Material Symbols icon: <span className="material-symbols-outlined">search</span> */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  display: inline-block;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
 }
